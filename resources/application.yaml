@@ -1,0 +1,6 @@
+application:
+  name: zgit
+
+ssh:
+  server:
+    port: 2222
