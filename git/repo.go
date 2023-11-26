@@ -133,8 +133,8 @@ func CloneRepository(ctx context.Context, repoPath, dst string, env []string) er
 func CommitAndPushRepository(ctx context.Context, committer User, repo Repository, branch, commitMsg string, gpnKeyId string) error {
 	commitTimeStr := time.Now().Format(time.RFC3339)
 	env := append(os.Environ(),
-		"GIT_AUTHOR_NAME="+repo.Owner.Name,
-		"GIT_AUTHOR_EMAIL="+repo.Owner.Email,
+		"GIT_AUTHOR_NAME="+committer.Name,
+		"GIT_AUTHOR_EMAIL="+committer.Email,
 		"GIT_AUTHOR_DATE="+commitTimeStr,
 		"GIT_COMMITTER_DATE="+commitTimeStr,
 	)
@@ -145,10 +145,10 @@ func CommitAndPushRepository(ctx context.Context, committer User, repo Repositor
 	commitCmd := command.NewCommand(
 		"commit",
 		fmt.Sprintf("--message='%s'", commitMsg),
-		fmt.Sprintf("--author='%s <%s>'", repo.Owner.Name, repo.Owner.Email),
+		fmt.Sprintf("--author='%s <%s>'", committer.Name, committer.Email),
 	)
 	if gpnKeyId != "" {
-		commitCmd.AddArgs("-S%s", gpnKeyId)
+		commitCmd.AddArgs(fmt.Sprintf("-S%s", gpnKeyId))
 	} else {
 		commitCmd.AddArgs("--no-gpg-sign")
 	}

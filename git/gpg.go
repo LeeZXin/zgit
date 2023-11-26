@@ -2,11 +2,21 @@ package git
 
 import "zgit/setting"
 
+type CommitScene int
+
 const (
-	FirstCommitScene = iota
+	FirstCommitScene CommitScene = iota
 )
 
-func GetGpnKeyId(repo string, sceneType int) string {
+func GetGpnKeyId(repo string, sceneType CommitScene) string {
+	switch sceneType {
+	case FirstCommitScene:
+		if !setting.SignWhenFirstCommit() {
+			return ""
+		}
+	default:
+		break
+	}
 	signKey := setting.SignKey()
 	if signKey == "" || signKey == "default" {
 		key, _ := GetRepoSignKey(repo)
