@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-	"fmt"
 	"github.com/LeeZXin/zsf/starter"
 	"github.com/LeeZXin/zsf/zsf"
 	"github.com/urfave/cli/v2"
@@ -27,7 +25,6 @@ func runWeb(c *cli.Context) error {
 	}
 	ssh.InitSsh()
 	git.InitGit()
-	fmt.Println(git.BatchCheck(context.Background(), "/Users/lizexin/IdeaProjects/wecare-clue-runner", "master"))
 	starter.Run(options...)
 	return nil
 }

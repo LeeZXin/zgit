@@ -5,8 +5,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sync"
 	"unsafe"
 )
+
+type PipeResultCloser interface {
+	ClosePipe()
+}
 
 type Result struct {
 	stdOut *bytes.Buffer
@@ -30,6 +35,7 @@ func bytesToString(b []byte) string {
 
 type ReadPipeResult struct {
 	reader *io.PipeReader
+	o      sync.Once
 }
 
 func (r *ReadPipeResult) Reader() io.Reader {
@@ -37,7 +43,9 @@ func (r *ReadPipeResult) Reader() io.Reader {
 }
 
 func (r *ReadPipeResult) ClosePipe() {
-	r.reader.Close()
+	r.o.Do(func() {
+		r.reader.Close()
+	})
 }
 
 func (r *ReadPipeResult) RangeStringLines(rangeFn func(int, string) error) error {
@@ -63,6 +71,7 @@ func (r *ReadPipeResult) RangeStringLines(rangeFn func(int, string) error) error
 type ReadWritePipeResult struct {
 	reader *io.PipeReader
 	writer *io.PipeWriter
+	o      sync.Once
 }
 
 func (r *ReadWritePipeResult) Reader() io.Reader {
@@ -74,6 +83,8 @@ func (r *ReadWritePipeResult) Writer() io.Writer {
 }
 
 func (r *ReadWritePipeResult) ClosePipe() {
-	r.reader.Close()
-	r.writer.Close()
+	r.o.Do(func() {
+		r.reader.Close()
+		r.writer.Close()
+	})
 }

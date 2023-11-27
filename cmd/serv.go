@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/LeeZXin/zsf/logger"
 	"github.com/kballard/go-shellquote"
 	"github.com/urfave/cli/v2"
 	"os"
@@ -45,7 +44,6 @@ var Serv = &cli.Command{
 }
 
 func runServ(c *cli.Context) error {
-	isDebugRunMode := setting.IsDebugRunMode()
 	ctx, cancel := initWaitContext()
 	defer cancel()
 	if c.NArg() < 1 {
@@ -63,9 +61,6 @@ func runServ(c *cli.Context) error {
 		return exitWithDefaultCode("Key check failed")
 	}
 	cmd := os.Getenv("SSH_ORIGINAL_COMMAND")
-	if isDebugRunMode {
-		logger.Logger.Debugf("runServ command: %v", cmd)
-	}
 	// 命令为空
 	if cmd == "" {
 		fmt.Printf(hiWords, keyUser.UserName)
@@ -78,7 +73,7 @@ func runServ(c *cli.Context) error {
 	if len(words) < 2 {
 		return sshInfo(cmd)
 	}
-	return gitAction(ctx, keyUser, isDebugRunMode, words)
+	return gitAction(ctx, keyUser, words)
 }
 
 func findAuthorizedKey(ctx context.Context, keyId string) (KeyUser, bool, error) {
@@ -101,7 +96,7 @@ func sshInfo(cmd string) error {
 	return exitWithDefaultCode("too few arguments")
 }
 
-func gitAction(ctx context.Context, user KeyUser, isDebugMode bool, words []string) error {
+func gitAction(ctx context.Context, user KeyUser, words []string) error {
 	verb := words[0]
 	repoPath := words[1]
 	if repoPath[0] == '/' {
@@ -122,11 +117,8 @@ func gitAction(ctx context.Context, user KeyUser, isDebugMode bool, words []stri
 		return exitWithDefaultCode("Invalid repository path" + repoPath)
 	}
 	username := strings.ToLower(rr[0])
-	reponame := strings.ToLower(strings.TrimSuffix(rr[1], ".git"))
-	if isDebugMode {
-		logger.Logger.Debugf("repo: %s username: %s reponame: %s", repoPath, username, reponame)
-	}
-	if alphaDashDotPattern.MatchString(reponame) {
+	repoName := strings.ToLower(strings.TrimSuffix(rr[1], ".git"))
+	if alphaDashDotPattern.MatchString(repoName) {
 		return exitWithDefaultCode("Invalid repo name")
 	}
 	accessMode, b := allowedCommands[verb]
@@ -142,7 +134,7 @@ func gitAction(ctx context.Context, user KeyUser, isDebugMode bool, words []stri
 			return exitWithDefaultCode("Unknown LFS verb:" + lfsVerb)
 		}
 	}
-	results, b, err := checkAccessMode(ctx, user, username, reponame, accessMode, verb, lfsVerb)
+	results, b, err := checkAccessMode(ctx, user, username, repoName, accessMode, verb, lfsVerb)
 	if err != nil {
 		return exitWithDefaultCode("not authorized")
 	}
@@ -213,12 +205,7 @@ func gitAction(ctx context.Context, user KeyUser, isDebugMode bool, words []stri
 		git.EnvKeyID+"="+fmt.Sprintf("%d", results.KeyID),
 		git.EnvAppURL+"="+setting.AppUrl(),
 	)
-	// to avoid breaking, here only use the minimal environment variables for the "gitea serv" command.
-	// it could be re-considered whether to use the same git.CommonGitCmdEnvs() as "git" command later.
 	gitcmd.Env = append(gitcmd.Env, command.CommonEnvs()...)
-	if isDebugMode {
-		logger.Logger.Debugf("gitcmd: %s", gitcmd.String())
-	}
 	if err = gitcmd.Run(); err != nil {
 		return exitWithDefaultCode(fmt.Sprintf("Failed to execute git command: %v", stderr.String()))
 	}

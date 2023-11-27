@@ -32,6 +32,7 @@ const (
 const (
 	RequiredVersion = "2.0.0"
 	BranchPrefix    = "refs/heads/"
+	TimeLayout      = "Mon Jan _2 15:04:05 2006 -0700"
 )
 
 var (
@@ -141,7 +142,11 @@ func setGlobalConfigCheckOverwrite(k, v string, overwrite bool) error {
 	if err == nil && !overwrite {
 		return nil
 	}
-	currValue := strings.TrimSpace(result.ReadAsString())
+	var currValue string
+	// 配置存在
+	if err == nil {
+		currValue = strings.TrimSpace(result.ReadAsString())
+	}
 	if currValue == v {
 		return nil
 	}

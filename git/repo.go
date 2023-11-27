@@ -19,16 +19,21 @@ var (
 )
 
 type Repository struct {
-	Id    string `json:"id"`
+	Id    string `json:"Id"`
 	Owner User   `json:"owner"`
 	Name  string `json:"name"`
 	Path  string `json:"path"`
 }
 
-type InitRepoOpts struct {
+type InitOpts struct {
 	CreateReadme  bool
 	GitIgnoreName string
 	DefaultBranch string
+}
+
+type CommitAndPushOpts struct {
+	Committer         User
+	Branch, CommitMsg string
 }
 
 func initEmptyRepository(ctx context.Context, repoPath string) error {
@@ -51,7 +56,7 @@ func initEmptyRepository(ctx context.Context, repoPath string) error {
 	return err
 }
 
-func InitRepository(ctx context.Context, repo Repository, opts InitRepoOpts) error {
+func InitRepository(ctx context.Context, repo Repository, opts InitOpts) error {
 	if err := initEmptyRepository(ctx, repo.Path); err != nil {
 		return err
 	}
@@ -75,7 +80,7 @@ func InitRepository(ctx context.Context, repo Repository, opts InitRepoOpts) err
 	return nil
 }
 
-func initTemporaryRepository(ctx context.Context, repo Repository, tmpDir string, opts InitRepoOpts) error {
+func initTemporaryRepository(ctx context.Context, repo Repository, tmpDir string, opts InitOpts) error {
 	if err := CloneRepository(ctx, repo.Path, tmpDir, nil); err != nil {
 		return fmt.Errorf("failed to clone original repository %s: %w", repo.Name, err)
 	}
@@ -88,16 +93,16 @@ func initTemporaryRepository(ctx context.Context, repo Repository, tmpDir string
 			util.WriteFile(filepath.Join(tmpDir, ".gitIgnore"), content)
 		}
 	}
-	gpnKeyId := ""
-	if setting.SignWhenFirstCommit() {
-		gpnKeyId = GetGpnKeyId(repo.Path, FirstCommitScene)
-	}
-	return CommitAndPushRepository(ctx, repo.Owner, Repository{
+	return CommitAndPushRepository(ctx, Repository{
 		Id:    repo.Id,
 		Owner: repo.Owner,
 		Name:  repo.Name,
 		Path:  tmpDir,
-	}, opts.DefaultBranch, "first commit", gpnKeyId)
+	}, CommitAndPushOpts{
+		Committer: repo.Owner,
+		Branch:    opts.DefaultBranch,
+		CommitMsg: "first commit",
+	})
 }
 
 func EnsureValidRepository(ctx context.Context, repoPath string) error {
@@ -130,13 +135,16 @@ func CloneRepository(ctx context.Context, repoPath, dst string, env []string) er
 	return err
 }
 
-func CommitAndPushRepository(ctx context.Context, committer User, repo Repository, branch, commitMsg string, gpnKeyId string) error {
+func CommitAndPushRepository(ctx context.Context, repo Repository, opts CommitAndPushOpts) error {
 	commitTimeStr := time.Now().Format(time.RFC3339)
-	env := append(os.Environ(),
-		"GIT_AUTHOR_NAME="+committer.Name,
-		"GIT_AUTHOR_EMAIL="+committer.Email,
-		"GIT_AUTHOR_DATE="+commitTimeStr,
-		"GIT_COMMITTER_DATE="+commitTimeStr,
+	env := append(
+		os.Environ(),
+		util.JoinFields(
+			"GIT_AUTHOR_NAME", repo.Owner.Name,
+			"GIT_AUTHOR_EMAIL", repo.Owner.Email,
+			"GIT_AUTHOR_DATE", commitTimeStr,
+			"GIT_COMMITTER_DATE", commitTimeStr,
+		)...,
 	)
 	_, err := command.NewCommand("add", "--all").Run(ctx, command.WithDir(repo.Path))
 	if err != nil {
@@ -144,27 +152,24 @@ func CommitAndPushRepository(ctx context.Context, committer User, repo Repositor
 	}
 	commitCmd := command.NewCommand(
 		"commit",
-		fmt.Sprintf("--message='%s'", commitMsg),
-		fmt.Sprintf("--author='%s <%s>'", committer.Name, committer.Email),
-	)
-	if gpnKeyId != "" {
-		commitCmd.AddArgs(fmt.Sprintf("-S%s", gpnKeyId))
-	} else {
-		commitCmd.AddArgs("--no-gpg-sign")
-	}
+		fmt.Sprintf("--message='%s'", opts.CommitMsg),
+		fmt.Sprintf("--Author='%s <%s>'", opts.Committer.Name, opts.Committer.Email),
+	).AddArgs("--no-gpg-sign")
 	env = append(env,
-		"GIT_COMMITTER_NAME="+committer.Name,
-		"GIT_COMMITTER_EMAIL="+committer.Email,
+		util.JoinFields(
+			"GIT_COMMITTER_NAME", opts.Committer.Name,
+			"GIT_COMMITTER_EMAIL", opts.Committer.Email,
+		)...,
 	)
 	_, err = commitCmd.Run(ctx, command.WithDir(repo.Path), command.WithEnv(env))
 	if err != nil {
 		return fmt.Errorf("git commit failed repo:%s err: %v", repo.Path, err)
 	}
-	if branch == "" {
-		branch = setting.DefaultBranch()
+	if opts.Branch == "" {
+		opts.Branch = setting.DefaultBranch()
 	}
-	_, err = command.NewCommand("push", "origin", fmt.Sprintf("HEAD:%s", branch)).
-		Run(ctx, command.WithDir(repo.Path), command.WithEnv(InternalPushEnv(repo, committer)))
+	_, err = command.NewCommand("push", "origin", fmt.Sprintf("HEAD:%s", opts.Branch)).
+		Run(ctx, command.WithDir(repo.Path), command.WithEnv(InternalPushEnv(repo, opts.Committer)))
 	return err
 }
 
@@ -193,27 +198,31 @@ func FullPushEnv(repo Repository, committer User, prId string) []string {
 	if strings.HasSuffix(repo.Path, ".wiki") {
 		isWiki = "true"
 	}
-	environ := append(os.Environ(),
-		"GIT_AUTHOR_NAME="+repo.Owner.Name,
-		"GIT_AUTHOR_EMAIL="+repo.Owner.Email,
-		"GIT_COMMITTER_NAME="+committer.Name,
-		"GIT_COMMITTER_EMAIL="+committer.Email,
-		EnvRepoName+"="+repo.Name,
-		EnvRepoUsername+"="+repo.Owner.Name,
-		EnvRepoIsWiki+"="+isWiki,
-		EnvPusherName+"="+committer.Name,
-		EnvPusherEmail+"="+committer.Email,
-		EnvPusherID+"="+committer.Id,
-		EnvRepoID+"="+repo.Id,
-		EnvPRID+"="+prId,
-		EnvAppURL+"="+setting.AppUrl(),
-		"SSH_ORIGINAL_COMMAND=gitea-internal",
+	environ := append(
+		os.Environ(),
+		util.JoinFields(
+			"GIT_AUTHOR_NAME", repo.Owner.Name,
+			"GIT_AUTHOR_EMAIL", repo.Owner.Email,
+			"GIT_COMMITTER_NAME", committer.Name,
+			"GIT_COMMITTER_EMAIL", committer.Email,
+			EnvRepoName, repo.Name,
+			EnvRepoUsername, repo.Owner.Name,
+			EnvRepoIsWiki, isWiki,
+			EnvPusherName, committer.Name,
+			EnvPusherEmail, committer.Email,
+			EnvPusherID, committer.Id,
+			EnvRepoID, repo.Id,
+			EnvPRID, prId,
+			EnvAppURL, setting.AppUrl(),
+			"SSH_ORIGINAL_COMMAND", "gitea-internal",
+		)...,
 	)
 	return environ
 }
 
 func InternalPushEnv(repo Repository, committer User) []string {
-	return append(FullPushEnv(repo, committer, ""),
-		EnvIsInternal+"=true",
+	return append(
+		FullPushEnv(repo, committer, ""),
+		util.JoinFields(EnvIsInternal, "true")...,
 	)
 }
