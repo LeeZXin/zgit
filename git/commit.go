@@ -261,7 +261,7 @@ func genCommit(r io.Reader, commit *Commit) error {
 			commit.Committer, commit.CommitterSigTime = parseUserAndTime(fields[1:])
 		case "gpgsig":
 			sigPayload := strings.Builder{}
-			sigPayload.WriteString(fields[1])
+			sigPayload.WriteString(gpg.StartLineTag + "\n")
 			for {
 				line, isPrefix, err = reader.ReadLine()
 				if err == io.EOF {
@@ -274,7 +274,7 @@ func genCommit(r io.Reader, commit *Commit) error {
 					continue
 				}
 				lineStr := string(line)
-				sigPayload.WriteString(lineStr)
+				sigPayload.WriteString(lineStr + "\n")
 				if strings.TrimSpace(lineStr) == gpg.EndLineTag {
 					break
 				}
