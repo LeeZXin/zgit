@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+	"fmt"
 	"github.com/LeeZXin/zsf/starter"
 	"github.com/LeeZXin/zsf/zsf"
 	"github.com/urfave/cli/v2"
@@ -25,6 +27,8 @@ func runWeb(c *cli.Context) error {
 	}
 	ssh.InitSsh()
 	git.InitGit()
+	_, err := git.GetGitLogCommitList(context.Background(), "/Users/lizexin/go/src/zgit/data/repo/bb/runner-test.git", "9727e46b0db7a5448d6e2aa7b39210ab669d0674", "refs/heads/uat", true)
+	fmt.Println(err)
 	starter.Run(options...)
 	return nil
 }

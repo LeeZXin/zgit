@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/LeeZXin/zsf-utils/listutil"
 	"io"
 	"regexp"
 	"strconv"
@@ -16,12 +17,11 @@ import (
 )
 
 const (
-	MissingType = "missing"
-	CommitType  = "commit"
-	TagType     = "tag"
+	CommitType = "commit"
+	TagType    = "tag"
 )
 
-var commitIdPattern = regexp.MustCompile(`^[0-9a-f]{40}$`)
+var commitIdPattern = regexp.MustCompile(`^[0-9a-f]{4,40}$`)
 
 type Commit struct {
 	Id               string     `json:"id"`
@@ -83,7 +83,7 @@ func (c *CommitID) ShortStr() string {
 }
 
 func NewCommitIDFromHexStr(str string) (CommitID, error) {
-	if !commitIdPattern.MatchString(str) {
+	if len(str) != 40 || !commitIdPattern.MatchString(str) {
 		return CommitID{}, errors.New("commitId is not valid")
 	}
 	bs, err := hex.DecodeString(str)
@@ -100,8 +100,16 @@ func NewCommitIDFromHexStr(str string) (CommitID, error) {
 }
 
 func GetRefCommitId(ctx context.Context, repoPath string, name string) (string, error) {
-	commitId, _, _, err := CatFileBatchCheck(ctx, repoPath, name)
-	return commitId, err
+	cmd := command.NewCommand("rev-parse", name)
+	result, err := cmd.Run(ctx, command.WithDir(repoPath))
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(result.ReadAsString()), nil
+}
+
+func CheckRefIsCommit(ctx context.Context, repoPath string, name string) bool {
+	return CatFileExists(ctx, repoPath, name) == nil
 }
 
 func GetCommitByCommitId(ctx context.Context, repoPath string, commitId string) (*Commit, error) {
@@ -131,8 +139,6 @@ func GetCommitByCommitId(ctx context.Context, repoPath string, commitId string) 
 			break
 		}
 		switch typ {
-		case MissingType:
-			return fmt.Errorf("%s is missing", commitId)
 		case CommitType:
 			return genCommit(io.LimitReader(reader, size), c)
 		default:
@@ -168,8 +174,6 @@ func GetCommitByTag(ctx context.Context, repoPath string, tag string) (c *Commit
 			break
 		}
 		switch typ {
-		case MissingType:
-			return fmt.Errorf("%s is missing", tag)
 		case TagType:
 			t := &Tag{
 				Id:  id,
@@ -293,9 +297,7 @@ func parseUserAndTime(f []string) (*User, *time.Time) {
 		u.Name = f[0]
 	}
 	if l >= 2 {
-		c := make([]byte, len(f[1])-2)
-		copy(c, f[1][1:len(f[1])-1])
-		u.Email = string(c)
+		u.Email = f[1][1 : len(f[1])-1]
 	}
 	var eventTime time.Time
 	if l >= 3 {
@@ -324,4 +326,17 @@ func parseUserAndTime(f []string) (*User, *time.Time) {
 		}
 	}
 	return &u, &eventTime
+}
+
+func GetGitLogCommitList(ctx context.Context, repoPath, target, head string, directCompare bool) ([]*Commit, error) {
+	separator := getRefCompareSeparator(directCompare)
+	result, err := command.NewCommand("log", PrettyLogFormat, target+separator+head, "--").
+		Run(ctx, command.WithDir(repoPath))
+	if err != nil {
+		return nil, err
+	}
+	idList := strings.Fields(strings.TrimSpace(result.ReadAsString()))
+	return listutil.Map(idList, func(t string) (*Commit, error) {
+		return GetCommitByCommitId(ctx, repoPath, t)
+	})
 }

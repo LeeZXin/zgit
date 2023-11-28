@@ -152,9 +152,10 @@ func CommitAndPushRepository(ctx context.Context, repo Repository, opts CommitAn
 	}
 	commitCmd := command.NewCommand(
 		"commit",
+		"--no-gpg-sign",
 		fmt.Sprintf("--message='%s'", opts.CommitMsg),
 		fmt.Sprintf("--Author='%s <%s>'", opts.Committer.Name, opts.Committer.Email),
-	).AddArgs("--no-gpg-sign")
+	)
 	env = append(env,
 		util.JoinFields(
 			"GIT_COMMITTER_NAME", opts.Committer.Name,

@@ -20,3 +20,12 @@ func GetAllBranchList(ctx context.Context, repoPath string) ([]string, error) {
 	})
 	return ret, err
 }
+
+func NewBranch(ctx context.Context, repoPath string, branchName string) error {
+	_, err := command.NewCommand("branch", branchName).Run(ctx, command.WithDir(repoPath))
+	return err
+}
+
+func CheckRefIsBranch(ctx context.Context, repoPath string, branch string) bool {
+	return CatFileExists(ctx, repoPath, BranchPrefix+branch) == nil
+}

@@ -35,7 +35,7 @@ func CatFileBatchCheck(ctx context.Context, repoPath string, name string) (strin
 func readBatchLine(line string) (string, string, int64, error) {
 	fields := strings.Fields(line)
 	if len(fields) == 2 {
-		return fields[0], fields[1], 0, nil
+		return fields[0], "", 0, errors.New("ref is missing")
 	}
 	if len(fields) != 3 {
 		return "", "", 0, errors.New("format error")
@@ -59,4 +59,9 @@ func CatFileBatch(ctx context.Context, repoPath string, name string, readFn func
 		return err
 	}
 	return readFn(pipe.Reader(), pipe)
+}
+
+func CatFileExists(ctx context.Context, repoPath string, name string) error {
+	_, err := command.NewCommand("cat-file", "-e", name).Run(ctx, command.WithDir(repoPath))
+	return err
 }

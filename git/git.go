@@ -32,7 +32,11 @@ const (
 const (
 	RequiredVersion = "2.0.0"
 	BranchPrefix    = "refs/heads/"
+	TagPrefix       = "refs/tags/"
 	TimeLayout      = "Mon Jan _2 15:04:05 2006 -0700"
+	PrettyLogFormat = "--pretty=format:%H"
+	RemotePrefix    = "refs/remotes/"
+	PullPrefix      = "refs/pull/"
 )
 
 var (
@@ -185,4 +189,11 @@ func UnsetAllGlobalConfig(k, v string) error {
 		return nil
 	}
 	return fmt.Errorf("failed to get git config %s, err: %w", k, err)
+}
+
+func getRefCompareSeparator(directCompare bool) string {
+	if directCompare {
+		return ".."
+	}
+	return "..."
 }
