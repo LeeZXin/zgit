@@ -3,8 +3,6 @@ package git
 import (
 	"bufio"
 	"context"
-	"encoding/hex"
-	"errors"
 	"fmt"
 	"github.com/LeeZXin/zsf-utils/listutil"
 	"io"
@@ -21,7 +19,9 @@ const (
 	TagType    = "tag"
 )
 
-var commitIdPattern = regexp.MustCompile(`^[0-9a-f]{4,40}$`)
+var (
+	ShortCommitIdPattern = regexp.MustCompile(`^[0-9a-f]{7}$`)
+)
 
 type Commit struct {
 	Id               string     `json:"id"`
@@ -60,43 +60,6 @@ func NewTree(id string) *Tree {
 	return &Tree{
 		Id: id,
 	}
-}
-
-type CommitID struct {
-	o string
-	b []byte
-	s string
-}
-
-func (c *CommitID) OriginalStr() string {
-	return c.o
-}
-
-func (c *CommitID) BytesContent() []byte {
-	b := make([]byte, 20)
-	copy(c.b, b)
-	return b
-}
-
-func (c *CommitID) ShortStr() string {
-	return c.s
-}
-
-func NewCommitIDFromHexStr(str string) (CommitID, error) {
-	if len(str) != 40 || !commitIdPattern.MatchString(str) {
-		return CommitID{}, errors.New("commitId is not valid")
-	}
-	bs, err := hex.DecodeString(str)
-	if err != nil {
-		return CommitID{}, err
-	}
-	b := make([]byte, 20)
-	copy(bs, b)
-	return CommitID{
-		o: str,
-		b: b,
-		s: str[0:7],
-	}, nil
 }
 
 func GetRefCommitId(ctx context.Context, repoPath string, name string) (string, error) {
@@ -328,9 +291,16 @@ func parseUserAndTime(f []string) (*User, *time.Time) {
 	return &u, &eventTime
 }
 
-func GetGitLogCommitList(ctx context.Context, repoPath, target, head string, directCompare bool) ([]*Commit, error) {
-	separator := getRefCompareSeparator(directCompare)
-	result, err := command.NewCommand("log", PrettyLogFormat, target+separator+head, "--").
+func GetFullShaCommitId(ctx context.Context, repoPath, short string) (string, error) {
+	if ShortCommitIdPattern.MatchString(short) {
+		line, _, _, err := CatFileBatchCheck(ctx, repoPath, short)
+		return line, err
+	}
+	return short, nil
+}
+
+func GetGitLogCommitList(ctx context.Context, repoPath, target, head string) ([]*Commit, error) {
+	result, err := command.NewCommand("log", PrettyLogFormat, target+".."+head, "--max-count=500", "--").
 		Run(ctx, command.WithDir(repoPath))
 	if err != nil {
 		return nil, err

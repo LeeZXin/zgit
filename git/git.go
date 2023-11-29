@@ -190,10 +190,3 @@ func UnsetAllGlobalConfig(k, v string) error {
 	}
 	return fmt.Errorf("failed to get git config %s, err: %w", k, err)
 }
-
-func getRefCompareSeparator(directCompare bool) string {
-	if directCompare {
-		return ".."
-	}
-	return "..."
-}
