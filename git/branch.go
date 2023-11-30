@@ -21,11 +21,19 @@ func GetAllBranchList(ctx context.Context, repoPath string) ([]string, error) {
 	return ret, err
 }
 
-func NewBranch(ctx context.Context, repoPath string, branchName string) error {
-	_, err := command.NewCommand("branch", branchName).Run(ctx, command.WithDir(repoPath))
+func NewBranch(ctx context.Context, repoPath string, name string) error {
+	_, err := command.NewCommand("branch", name).Run(ctx, command.WithDir(repoPath))
 	return err
 }
 
 func CheckRefIsBranch(ctx context.Context, repoPath string, branch string) bool {
 	return CatFileExists(ctx, repoPath, BranchPrefix+branch) == nil
+}
+
+func CheckCommitIfInBranch(ctx context.Context, repoPath, commitId, branch string) (bool, error) {
+	result, err := command.NewCommand("branch", "--contains", commitId, branch).Run(ctx, command.WithDir(repoPath))
+	if err != nil {
+		return false, err
+	}
+	return len(strings.TrimSpace(result.ReadAsString())) > 0, nil
 }

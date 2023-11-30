@@ -13,3 +13,7 @@ func MergeBase(ctx context.Context, repoPath, target, head string) (string, erro
 	}
 	return strings.TrimSpace(result.ReadAsString()), err
 }
+
+func Merge(ctx context.Context, repoPath, target, head string) error {
+	return nil
+}

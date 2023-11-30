@@ -26,6 +26,7 @@ const (
 	InsertLinePrefix = "+"
 	DeleteLinePrefix = "-"
 	NormalLinePrefix = " "
+	TagLinePrefix    = "@"
 )
 
 func (t DiffFileType) String() string {
@@ -73,6 +74,11 @@ type DiffDetail struct {
 	IsSubModule bool
 	FileType    DiffFileType
 	IsBinary    bool
+	RenameFrom  string
+	RenameTo    string
+	CopyFrom    string
+	CopyTo      string
+	Lines       []DiffLine
 }
 
 func NewDiffDetail() *DiffDetail {
@@ -221,10 +227,10 @@ func GetDiffShortStat(ctx context.Context, repoPath, target, head string) (int, 
 	return fileChangeNums, insertNums, deleteNums, nil
 }
 
-func GetDiffFileContent(ctx context.Context, repoPath, target, head, filePath string) (*DiffDetail, error) {
+func GenDiffDetail(ctx context.Context, repoPath, target, head, filePath string) (*DiffDetail, error) {
 	pipeResult := command.NewCommand("diff", "--src-prefix=a/", "--dst-prefix=b/", target+".."+head, "--", filePath).RunWithReadPipe(ctx, command.WithDir(repoPath))
 	defer pipeResult.ClosePipe()
-	reader := bufio.NewReaderSize(pipeResult.Reader(), 4096)
+	reader := bufio.NewReader(pipeResult.Reader())
 	c := NewDiffDetail()
 	for {
 		line, isPrefix, err := reader.ReadLine()
@@ -248,6 +254,10 @@ func GetDiffFileContent(ctx context.Context, repoPath, target, head, filePath st
 			// nothing
 		} else if strings.HasPrefix(lineStr, "+++") {
 			// parse hunks
+			c.Lines, err = parseHunks(reader)
+			if err != nil {
+				return nil, fmt.Errorf("parse hunks err:%v", err)
+			}
 		} else if strings.HasPrefix(lineStr, "new mode") {
 			c.Mode = strings.TrimSpace(strings.TrimPrefix(lineStr, "new mode"))
 			if strings.HasSuffix(lineStr, "160000") {
@@ -265,17 +275,19 @@ func GetDiffFileContent(ctx context.Context, repoPath, target, head, filePath st
 				c.IsSubModule = true
 			}
 		} else if strings.HasPrefix(lineStr, "rename from") {
+			c.RenameFrom = strings.TrimSpace(strings.TrimPrefix(lineStr, "rename from"))
 			c.FileType = RenamedFileType
 		} else if strings.HasPrefix(lineStr, "rename to") {
+			c.RenameTo = strings.TrimSpace(strings.TrimPrefix(lineStr, "rename to"))
 			c.FileType = RenamedFileType
 		} else if strings.HasPrefix(lineStr, "copy from") {
+			c.CopyFrom = strings.TrimSpace(strings.TrimPrefix(lineStr, "copy from"))
 			c.FileType = CopiedFileType
 		} else if strings.HasPrefix(lineStr, "copy to") {
+			c.CopyTo = strings.TrimSpace(strings.TrimPrefix(lineStr, "copy to"))
 			c.FileType = CopiedFileType
 		} else if strings.HasPrefix(lineStr, "deleted") {
 			c.FileType = DeletedFileType
-		} else if strings.HasPrefix(lineStr, "similarity index") {
-			c.FileType = RenamedFileType
 		} else if strings.HasPrefix(lineStr, "Binary") {
 			c.IsBinary = true
 		}
@@ -283,10 +295,9 @@ func GetDiffFileContent(ctx context.Context, repoPath, target, head, filePath st
 	return c, nil
 }
 
-func parseHunks(ctx context.Context, reader *bufio.Reader) ([]DiffLine, error) {
+func parseHunks(reader *bufio.Reader) ([]DiffLine, error) {
 	insertionNums := 0
 	deletionNums := 0
-	totalLinesNums := 0
 	ret := make([]DiffLine, 0)
 	var (
 		index, leftNo, rightNo int
@@ -302,48 +313,42 @@ func parseHunks(ctx context.Context, reader *bufio.Reader) ([]DiffLine, error) {
 		if isPrefix {
 			continue
 		}
-		totalLinesNums++
-		lineStr := strings.TrimSpace(string(line))
-		switch lineStr[0] {
-		case '@':
+		lineStr := string(line)
+		if strings.HasPrefix(lineStr, "@@") {
 			leftNo, _, rightNo, _, err = parseHunkString(lineStr)
 			if err != nil {
 				return nil, err
 			}
-		case '+':
-			if len(ret) > 0 && ret[len(ret)-1].Prefix == DeleteLinePrefix {
-				ret = append(ret, DiffLine{
-					Index:   index,
-					LeftNo:  leftNo,
-					Prefix:  InsertLinePrefix,
-					RightNo: rightNo,
-					Text:    lineStr,
-				})
-			} else {
-				rightNo++
-				ret = append(ret, DiffLine{
-					Index:   index,
-					LeftNo:  leftNo,
-					Prefix:  InsertLinePrefix,
-					RightNo: rightNo,
-					Text:    lineStr,
-				})
-			}
-
-			index++
+			leftNo--
+			rightNo--
+			ret = append(ret, DiffLine{
+				Index:   index,
+				LeftNo:  leftNo,
+				Prefix:  TagLinePrefix,
+				RightNo: rightNo,
+				Text:    lineStr,
+			})
+		} else if strings.HasPrefix(lineStr, "+") {
+			rightNo++
+			ret = append(ret, DiffLine{
+				Index:   index,
+				LeftNo:  leftNo,
+				Prefix:  InsertLinePrefix,
+				RightNo: rightNo,
+				Text:    lineStr[1:],
+			})
 			insertionNums++
-		case '-':
+		} else if strings.HasPrefix(lineStr, "-") {
 			leftNo++
 			ret = append(ret, DiffLine{
 				Index:   index,
 				LeftNo:  leftNo,
 				Prefix:  DeleteLinePrefix,
 				RightNo: rightNo,
-				Text:    lineStr,
+				Text:    lineStr[1:],
 			})
-			index++
 			deletionNums++
-		default:
+		} else {
 			leftNo++
 			rightNo++
 			ret = append(ret, DiffLine{
@@ -351,10 +356,10 @@ func parseHunks(ctx context.Context, reader *bufio.Reader) ([]DiffLine, error) {
 				LeftNo:  leftNo,
 				Prefix:  NormalLinePrefix,
 				RightNo: rightNo,
-				Text:    lineStr,
+				Text:    lineStr[1:],
 			})
-			index++
 		}
+		index++
 	}
 	return ret, nil
 }
@@ -389,4 +394,12 @@ func parseHunkString(line string) (int, int, int, int, error) {
 		return 0, 0, 0, 0, err
 	}
 	return o1, o2, n1, n2, nil
+}
+
+func GenDiffDetailRowData(ctx context.Context, repoPath, target, head, filePath string) (string, error) {
+	result, err := command.NewCommand("diff", "--src-prefix=a/", "--dst-prefix=b/", target+".."+head, "--", filePath).Run(ctx, command.WithDir(repoPath))
+	if err != nil {
+		return "", err
+	}
+	return result.ReadAsString(), nil
 }
