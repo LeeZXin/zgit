@@ -33,6 +33,8 @@ type Commit struct {
 	CommitterSigTime *time.Time `json:"committerSigTime"`
 	GpgSig           string     `json:"gpgSig"`
 	CommitMsg        string     `json:"commitMsg"`
+
+	Tag *Tag `json:"-"`
 }
 
 func NewCommit(id string) *Commit {
@@ -150,6 +152,7 @@ func GetCommitByTag(ctx context.Context, repoPath string, tag string) (c *Commit
 				return fmt.Errorf("%s object is empty", tag)
 			}
 			c, err = GetCommitByCommitId(ctx, repoPath, t.Object)
+			c.Tag = t
 			return err
 		default:
 			return fmt.Errorf("unsupported type: %s", typ)

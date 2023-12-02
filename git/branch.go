@@ -9,14 +9,13 @@ import (
 func GetAllBranchList(ctx context.Context, repoPath string) ([]string, error) {
 	cmd := command.NewCommand("for-each-ref", "--format=%(objectname) %(refname)", BranchPrefix, "--sort=-committerdate")
 	pipeResult := cmd.RunWithReadPipe(ctx, command.WithDir(repoPath))
-	defer pipeResult.ClosePipe()
 	ret := make([]string, 0)
-	err := pipeResult.RangeStringLines(func(_ int, line string) error {
+	err := pipeResult.RangeStringLines(func(_ int, line string) (bool, error) {
 		split := strings.Split(strings.TrimSpace(line), " ")
 		if len(split) == 2 {
 			ret = append(ret, strings.TrimPrefix(split[1], BranchPrefix))
 		}
-		return nil
+		return true, nil
 	})
 	return ret, err
 }
@@ -27,7 +26,10 @@ func NewBranch(ctx context.Context, repoPath string, name string) error {
 }
 
 func CheckRefIsBranch(ctx context.Context, repoPath string, branch string) bool {
-	return CatFileExists(ctx, repoPath, BranchPrefix+branch) == nil
+	if !strings.HasPrefix(branch, BranchPrefix) {
+		branch = BranchPrefix + branch
+	}
+	return CatFileExists(ctx, repoPath, branch) == nil
 }
 
 func CheckCommitIfInBranch(ctx context.Context, repoPath, commitId, branch string) (bool, error) {

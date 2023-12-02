@@ -54,11 +54,11 @@ const (
 	DefaultFileMode = "100644"
 )
 
-type CompareInfo struct {
-	TargetCommitId string    `json:"targetCommitId"`
-	HeadCommitId   string    `json:"headCommitId"`
-	Commits        []*Commit `json:"commits"`
-	NumFiles       int       `json:"numFiles"`
+type DiffNumsStatInfo struct {
+	FileChangeNums int `json:"fileChangeNums"`
+	InsertNums     int `json:"insertNums"`
+	DeleteNums     int `json:"deleteNums"`
+	Stats          []*DiffNumsStat
 }
 
 type DiffNumsStat struct {
@@ -68,7 +68,8 @@ type DiffNumsStat struct {
 	DeleteNums int
 }
 
-type DiffDetail struct {
+type DiffFileDetail struct {
+	FilePath    string
 	OldMode     string
 	Mode        string
 	IsSubModule bool
@@ -81,8 +82,9 @@ type DiffDetail struct {
 	Lines       []DiffLine
 }
 
-func NewDiffDetail() *DiffDetail {
-	return &DiffDetail{
+func NewDiffDetail(filePath string) *DiffFileDetail {
+	return &DiffFileDetail{
+		FilePath: filePath,
 		OldMode:  DefaultFileMode,
 		Mode:     DefaultFileMode,
 		FileType: ModifiedFileType,
@@ -110,92 +112,44 @@ func GetFilesDiffCount(ctx context.Context, repoPath, target, head string) (int,
 	return bytes.Count(result.ReadAsBytes(), EndBytesFlag), nil
 }
 
-func GetCompareInfoBetween2Ref(ctx context.Context, repoPath, target, head string) (*CompareInfo, error) {
-	var err error
-	if CheckRefIsTag(ctx, repoPath, target) {
-		target = TagPrefix + target
-	} else if CheckRefIsBranch(ctx, repoPath, target) {
-		target = BranchPrefix + target
-	} else if CheckRefIsCommit(ctx, repoPath, target) {
-		target, err = GetFullShaCommitId(ctx, repoPath, target)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, fmt.Errorf("%s is not valid", target)
-	}
-	if CheckRefIsTag(ctx, repoPath, head) {
-		head = TagPrefix + head
-	} else if CheckRefIsBranch(ctx, repoPath, head) {
-		head = BranchPrefix + head
-	} else if CheckRefIsCommit(ctx, repoPath, head) {
-		head, err = GetFullShaCommitId(ctx, repoPath, head)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, fmt.Errorf("%s is not valid", head)
-	}
-	ret := new(CompareInfo)
-	ret.TargetCommitId, err = GetRefCommitId(ctx, repoPath, target)
-	if err != nil {
-		return nil, err
-	}
-	ret.HeadCommitId, err = GetRefCommitId(ctx, repoPath, head)
-	if err != nil {
-		return nil, err
-	}
-	ret.Commits, err = GetGitLogCommitList(ctx, repoPath, ret.HeadCommitId, ret.TargetCommitId)
-	if err != nil {
-		return nil, err
-	}
-	ret.NumFiles, err = GetFilesDiffCount(ctx, repoPath, ret.HeadCommitId, ret.TargetCommitId)
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
-}
-
-func GetDiffNumsStat(ctx context.Context, repoPath, target, head string) ([]DiffNumsStat, error) {
+func GenDiffNumsStat(ctx context.Context, repoPath, target, head string) (*DiffNumsStatInfo, error) {
 	pipeResult := command.NewCommand("diff", "--numstat", target+".."+head, "--").RunWithReadPipe(ctx, command.WithDir(repoPath))
-	defer pipeResult.ClosePipe()
-	reader := bufio.NewReader(pipeResult.Reader())
-	ret := make([]DiffNumsStat, 0)
-	for {
-		line, isPrefix, err := reader.ReadLine()
-		if err == io.EOF {
-			break
+	ret := make([]*DiffNumsStat, 0)
+	insertNumsTotal := 0
+	deleteNumsTotal := 0
+	if err := pipeResult.RangeStringLines(func(_ int, line string) (bool, error) {
+		fields := strings.Fields(line)
+		if len(fields) == 3 {
+			deleteNums, err := strconv.Atoi(fields[0])
+			if err != nil {
+				return false, fmt.Errorf("parseInt err: %v", deleteNums)
+			}
+			insertNums, err := strconv.Atoi(fields[1])
+			if err != nil {
+				return false, fmt.Errorf("parseInt err: %v", insertNums)
+			}
+			insertNumsTotal += insertNums
+			deleteNumsTotal += deleteNums
+			ret = append(ret, &DiffNumsStat{
+				Path:       fields[2],
+				InsertNums: insertNums,
+				DeleteNums: deleteNums,
+				TotalNums:  insertNums + deleteNums,
+			})
 		}
-		if err != nil {
-			return nil, err
-		}
-		if isPrefix {
-			continue
-		}
-		lineStr := strings.TrimSpace(string(line))
-		fields := strings.Fields(lineStr)
-		if len(fields) != 3 {
-			continue
-		}
-		insertNums, err := strconv.Atoi(fields[0])
-		if err != nil {
-			return nil, fmt.Errorf("parseInt err: %v", insertNums)
-		}
-		deleteNums, err := strconv.Atoi(fields[1])
-		if err != nil {
-			return nil, fmt.Errorf("parseInt err: %v", insertNums)
-		}
-		ret = append(ret, DiffNumsStat{
-			Path:       fields[2],
-			InsertNums: insertNums,
-			DeleteNums: deleteNums,
-			TotalNums:  insertNums + deleteNums,
-		})
+		return true, nil
+	}); err != nil {
+		return nil, err
 	}
-	return ret, nil
+	return &DiffNumsStatInfo{
+		FileChangeNums: len(ret),
+		InsertNums:     insertNumsTotal,
+		DeleteNums:     deleteNumsTotal,
+		Stats:          ret,
+	}, nil
 }
 
-func GetDiffShortStat(ctx context.Context, repoPath, target, head string) (int, int, int, error) {
+func GenDiffShortStat(ctx context.Context, repoPath, target, head string) (int, int, int, error) {
 	result, err := command.NewCommand("diff", "--shortstat", target+".."+head, "--").Run(ctx, command.WithDir(repoPath))
 	if err != nil {
 		return 0, 0, 0, err
@@ -227,11 +181,11 @@ func GetDiffShortStat(ctx context.Context, repoPath, target, head string) (int, 
 	return fileChangeNums, insertNums, deleteNums, nil
 }
 
-func GenDiffDetail(ctx context.Context, repoPath, target, head, filePath string) (*DiffDetail, error) {
+func GenDiffFileDetail(ctx context.Context, repoPath, target, head, filePath string) (*DiffFileDetail, error) {
 	pipeResult := command.NewCommand("diff", "--src-prefix=a/", "--dst-prefix=b/", target+".."+head, "--", filePath).RunWithReadPipe(ctx, command.WithDir(repoPath))
 	defer pipeResult.ClosePipe()
 	reader := bufio.NewReader(pipeResult.Reader())
-	c := NewDiffDetail()
+	c := NewDiffDetail(filePath)
 	for {
 		line, isPrefix, err := reader.ReadLine()
 		if err == io.EOF {

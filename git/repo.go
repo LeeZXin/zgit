@@ -25,7 +25,7 @@ type Repository struct {
 	Path  string `json:"path"`
 }
 
-type InitOpts struct {
+type InitRepoOpts struct {
 	CreateReadme  bool
 	GitIgnoreName string
 	DefaultBranch string
@@ -36,7 +36,7 @@ type CommitAndPushOpts struct {
 	Branch, CommitMsg string
 }
 
-func initEmptyRepository(ctx context.Context, repoPath string) error {
+func initEmptyRepository(ctx context.Context, repoPath string, bare bool) error {
 	if repoPath == "" {
 		return errors.New("repoPath is empty")
 	}
@@ -52,24 +52,24 @@ func initEmptyRepository(ctx context.Context, repoPath string) error {
 	if err != nil {
 		return err
 	}
-	_, err = command.NewCommand("init", command.BareFlag).Run(ctx, command.WithDir(repoPath))
+	cmd := command.NewCommand("init")
+	if bare {
+		cmd.AddArgs(command.BareFlag)
+	}
+	_, err = cmd.Run(ctx, command.WithDir(repoPath))
 	return err
 }
 
-func InitRepository(ctx context.Context, repo Repository, opts InitOpts) error {
-	if err := initEmptyRepository(ctx, repo.Path); err != nil {
+func InitRepository(ctx context.Context, repo Repository, opts InitRepoOpts) error {
+	if err := initEmptyRepository(ctx, repo.Path, true); err != nil {
 		return err
 	}
 	if opts.CreateReadme || opts.GitIgnoreName != "" {
-		tmpDir, err := os.MkdirTemp(os.TempDir(), "zgit-"+repo.Name)
+		tmpDir, err := os.MkdirTemp(setting.TempDir(), "zgit-"+repo.Name)
 		if err != nil {
 			return fmt.Errorf("failed to create temp dir for repository %s: %w", repo.Path, err)
 		}
-		defer func() {
-			if err := util.RemoveAll(tmpDir); err != nil {
-				logger.Logger.Errorf("Unable to remove temporary directory: %s: Error: %v", tmpDir, err)
-			}
-		}()
+		defer util.RemoveAll(tmpDir)
 		return initTemporaryRepository(ctx, repo, tmpDir, opts)
 	}
 	branch := opts.DefaultBranch
@@ -80,8 +80,8 @@ func InitRepository(ctx context.Context, repo Repository, opts InitOpts) error {
 	return nil
 }
 
-func initTemporaryRepository(ctx context.Context, repo Repository, tmpDir string, opts InitOpts) error {
-	if err := CloneRepository(ctx, repo.Path, tmpDir, nil); err != nil {
+func initTemporaryRepository(ctx context.Context, repo Repository, tmpDir string, opts InitRepoOpts) error {
+	if err := cloneRepository(ctx, repo.Path, tmpDir, nil); err != nil {
 		return fmt.Errorf("failed to clone original repository %s: %w", repo.Name, err)
 	}
 	if opts.CreateReadme {
@@ -93,7 +93,7 @@ func initTemporaryRepository(ctx context.Context, repo Repository, tmpDir string
 			util.WriteFile(filepath.Join(tmpDir, ".gitIgnore"), content)
 		}
 	}
-	return CommitAndPushRepository(ctx, Repository{
+	return commitAndPushRepository(ctx, Repository{
 		Id:    repo.Id,
 		Owner: repo.Owner,
 		Name:  repo.Name,
@@ -112,7 +112,10 @@ func EnsureValidRepository(ctx context.Context, repoPath string) error {
 }
 
 func SetDefaultBranch(ctx context.Context, repoPath, branch string) error {
-	cmd := command.NewCommand("symbolic-ref", "HEAD", BranchPrefix+branch)
+	if !strings.HasPrefix(branch, BranchPrefix) {
+		branch = BranchPrefix + branch
+	}
+	cmd := command.NewCommand("symbolic-ref", "HEAD", branch)
 	_, err := cmd.Run(ctx, command.WithDir(repoPath))
 	return err
 }
@@ -130,12 +133,12 @@ func GetDefaultBranch(ctx context.Context, repoPath string) (string, error) {
 	return strings.TrimPrefix(strings.TrimSpace(branch), BranchPrefix), nil
 }
 
-func CloneRepository(ctx context.Context, repoPath, dst string, env []string) error {
+func cloneRepository(ctx context.Context, repoPath, dst string, env []string) error {
 	_, err := command.NewCommand("clone", repoPath, dst).Run(ctx, command.WithEnv(env))
 	return err
 }
 
-func CommitAndPushRepository(ctx context.Context, repo Repository, opts CommitAndPushOpts) error {
+func commitAndPushRepository(ctx context.Context, repo Repository, opts CommitAndPushOpts) error {
 	commitTimeStr := time.Now().Format(time.RFC3339)
 	env := append(
 		os.Environ(),
@@ -154,7 +157,7 @@ func CommitAndPushRepository(ctx context.Context, repo Repository, opts CommitAn
 		"commit",
 		"--no-gpg-sign",
 		fmt.Sprintf("--message='%s'", opts.CommitMsg),
-		fmt.Sprintf("--Author='%s <%s>'", opts.Committer.Name, opts.Committer.Email),
+		fmt.Sprintf("--author='%s <%s>'", opts.Committer.Name, opts.Committer.Email),
 	)
 	env = append(env,
 		util.JoinFields(

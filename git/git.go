@@ -1,6 +1,7 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/property/static"
@@ -40,7 +41,7 @@ const (
 )
 
 var (
-	supportProcReceive = CheckGitVersionAtLeast("2.29") == nil
+	SupportProcReceive = CheckGitVersionAtLeast("2.29") == nil
 )
 
 func InitGit() {
@@ -88,7 +89,7 @@ func InitGit() {
 	}
 	mustSetGlobalConfigIfAbsent("user.name", setting.SignUsername())
 	mustSetGlobalConfigIfAbsent("user.email", setting.SignEmail())
-	if supportProcReceive {
+	if SupportProcReceive {
 		mustAddGlobalConfigIfAbsent("receive.procReceiveRefs", "refs/for")
 	} else {
 		mustUnsetAllGlobalConfig("receive.procReceiveRefs", "refs/for")
@@ -174,6 +175,14 @@ func AddGlobalConfigIfAbsent(k, v string) error {
 		return nil
 	}
 	return fmt.Errorf("failed to get git config %s, err: %w", k, err)
+}
+
+func SetLocalConfig(ctx context.Context, repoPath, k, v string) error {
+	_, err := command.NewCommand("config", "--local", k, v).Run(ctx, command.WithDir(repoPath))
+	if err != nil {
+		return fmt.Errorf("failed to set local config %s, err: %w", k, err)
+	}
+	return nil
 }
 
 func UnsetAllGlobalConfig(k, v string) error {

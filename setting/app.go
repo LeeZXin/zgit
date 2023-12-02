@@ -15,6 +15,8 @@ import (
 var (
 	dataDir, homeDir, appPath, repoRootDir string
 
+	tempDir string
+
 	appUrl = static.GetString("app.url")
 
 	isWindows = runtime.GOOS == "windows"
@@ -30,6 +32,7 @@ func init() {
 	dataDir = filepath.Join(pwd, "data")
 	homeDir = filepath.Join(dataDir, "home")
 	repoRootDir = filepath.Join(dataDir, "repo")
+	tempDir = filepath.Join(dataDir, "temp")
 	err = os.MkdirAll(homeDir, os.ModePerm)
 	if err != nil {
 		logger.Logger.Panicf("zgit os.MkdirAll homeDir err: %v", err)
@@ -37,6 +40,10 @@ func init() {
 	err = os.MkdirAll(repoRootDir, os.ModePerm)
 	if err != nil {
 		logger.Logger.Panicf("zgit os.MkdirAll repoRootDir err: %v", err)
+	}
+	err = os.MkdirAll(tempDir, os.ModePerm)
+	if err != nil {
+		logger.Logger.Panicf("zgit os.MkdirAll tempDir err: %v", err)
 	}
 	path, err := getAppPath()
 	if err != nil {
@@ -104,4 +111,8 @@ func RepoRootDir() string {
 
 func ResourcesDir() string {
 	return resourcesDir
+}
+
+func TempDir() string {
+	return tempDir
 }

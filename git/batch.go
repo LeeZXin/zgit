@@ -1,7 +1,6 @@
 package git
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -14,22 +13,22 @@ import (
 func CatFileBatchCheck(ctx context.Context, repoPath string, name string) (string, string, int64, error) {
 	cmd := command.NewCommand("cat-file", "--batch-check")
 	pipe := cmd.RunWithStdinPipe(ctx, command.WithDir(repoPath))
-	defer pipe.ClosePipe()
 	_, err := pipe.Writer().Write([]byte(name + "\n"))
 	if err != nil {
 		return "", "", 0, err
 	}
-	reader := bufio.NewReader(pipe.Reader())
-	for {
-		line, isPrefix, err := reader.ReadLine()
-		if isPrefix {
-			continue
-		}
-		if err != nil {
-			return "", "", 0, fmt.Errorf("readline err: %v", err)
-		}
-		return readBatchLine(string(line))
+	var (
+		ref, typ string
+		size     int64
+		e        error
+	)
+	if err = pipe.RangeStringLines(func(_ int, line string) (bool, error) {
+		ref, typ, size, e = readBatchLine(line)
+		return false, nil
+	}); err != nil {
+		return "", "", 0, err
 	}
+	return ref, typ, size, e
 }
 
 func readBatchLine(line string) (string, string, int64, error) {

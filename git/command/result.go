@@ -48,7 +48,8 @@ func (r *ReadPipeResult) ClosePipe() {
 	})
 }
 
-func (r *ReadPipeResult) RangeStringLines(rangeFn func(int, string) error) error {
+func (r *ReadPipeResult) RangeStringLines(rangeFn func(int, string) (bool, error)) error {
+	defer r.ClosePipe()
 	reader := bufio.NewReader(r.reader)
 	for i := 0; ; i++ {
 		line, isPrefix, err := reader.ReadLine()
@@ -61,9 +62,12 @@ func (r *ReadPipeResult) RangeStringLines(rangeFn func(int, string) error) error
 		if isPrefix {
 			continue
 		}
-		err = rangeFn(i, string(line))
+		shouldContinue, err := rangeFn(i, string(line))
 		if err != nil {
 			return err
+		}
+		if !shouldContinue {
+			return nil
 		}
 	}
 }
@@ -87,4 +91,28 @@ func (r *ReadWritePipeResult) ClosePipe() {
 		r.reader.Close()
 		r.writer.Close()
 	})
+}
+
+func (r *ReadWritePipeResult) RangeStringLines(rangeFn func(int, string) (bool, error)) error {
+	defer r.ClosePipe()
+	reader := bufio.NewReader(r.reader)
+	for i := 0; ; i++ {
+		line, isPrefix, err := reader.ReadLine()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if isPrefix {
+			continue
+		}
+		shouldContinue, err := rangeFn(i, string(line))
+		if err != nil {
+			return err
+		}
+		if !shouldContinue {
+			return nil
+		}
+	}
 }
