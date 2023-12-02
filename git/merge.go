@@ -9,7 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 	"zgit/git/command"
 	"zgit/setting"
 	"zgit/util"
@@ -130,7 +132,7 @@ func doMerge(ctx context.Context, repoPath string, pr *PreparePullRequestInfo, o
 	if len(pr.Commits) == 0 {
 		return errors.New("nothing to commit")
 	}
-	tempDir := filepath.Join(setting.TempDir(), "merge-"+strutil.RandomStr(5))
+	tempDir := filepath.Join(setting.TempDir(), "merge-"+strconv.FormatInt(time.Now().UnixNano(), 10)[10:]+strutil.RandomStr(3))
 	defer util.RemoveAll(tempDir)
 	var err error
 	if err = initEmptyRepository(ctx, tempDir, false); err != nil {
