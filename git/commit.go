@@ -65,7 +65,7 @@ func NewTree(id string) *Tree {
 }
 
 func GetRefCommitId(ctx context.Context, repoPath string, name string) (string, error) {
-	cmd := command.NewCommand("rev-parse", name)
+	cmd := command.NewCommand("rev-parse", "--verify", name)
 	result, err := cmd.Run(ctx, command.WithDir(repoPath))
 	if err != nil {
 		return "", err

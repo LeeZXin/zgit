@@ -81,7 +81,7 @@ func InitRepository(ctx context.Context, repo Repository, opts InitRepoOpts) err
 }
 
 func initTemporaryRepository(ctx context.Context, repo Repository, tmpDir string, opts InitRepoOpts) error {
-	if err := cloneRepository(ctx, repo.Path, tmpDir, nil); err != nil {
+	if _, err := command.NewCommand("clone", repo.Path, tmpDir).Run(ctx); err != nil {
 		return fmt.Errorf("failed to clone original repository %s: %w", repo.Name, err)
 	}
 	if opts.CreateReadme {
@@ -120,24 +120,6 @@ func SetDefaultBranch(ctx context.Context, repoPath, branch string) error {
 	return err
 }
 
-func GetDefaultBranch(ctx context.Context, repoPath string) (string, error) {
-	cmd := command.NewCommand("symbolic-ref", "HEAD")
-	result, err := cmd.Run(ctx, command.WithDir(repoPath))
-	if err != nil {
-		return "", err
-	}
-	branch := result.ReadAsString()
-	if !strings.HasPrefix(branch, BranchPrefix) {
-		return "", fmt.Errorf("%s is not branch", branch)
-	}
-	return strings.TrimPrefix(strings.TrimSpace(branch), BranchPrefix), nil
-}
-
-func cloneRepository(ctx context.Context, repoPath, dst string, env []string) error {
-	_, err := command.NewCommand("clone", repoPath, dst).Run(ctx, command.WithEnv(env))
-	return err
-}
-
 func commitAndPushRepository(ctx context.Context, repo Repository, opts CommitAndPushOpts) error {
 	commitTimeStr := time.Now().Format(time.RFC3339)
 	env := append(
@@ -172,7 +154,7 @@ func commitAndPushRepository(ctx context.Context, repo Repository, opts CommitAn
 	if opts.Branch == "" {
 		opts.Branch = setting.DefaultBranch()
 	}
-	_, err = command.NewCommand("push", "origin", fmt.Sprintf("HEAD:%s", opts.Branch)).
+	_, err = command.NewCommand("push", "origin", opts.Branch).
 		Run(ctx, command.WithDir(repo.Path), command.WithEnv(InternalPushEnv(repo, opts.Committer)))
 	return err
 }

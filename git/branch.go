@@ -20,11 +20,6 @@ func GetAllBranchList(ctx context.Context, repoPath string) ([]string, error) {
 	return ret, err
 }
 
-func NewBranch(ctx context.Context, repoPath string, name string) error {
-	_, err := command.NewCommand("branch", name).Run(ctx, command.WithDir(repoPath))
-	return err
-}
-
 func CheckRefIsBranch(ctx context.Context, repoPath string, branch string) bool {
 	if !strings.HasPrefix(branch, BranchPrefix) {
 		branch = BranchPrefix + branch

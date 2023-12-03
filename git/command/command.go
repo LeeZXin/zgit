@@ -62,7 +62,7 @@ func (c *Command) RunWithStdinPipe(ctx context.Context, ros ...RunOpts) *ReadWri
 	stdinReader, stdinWriter := io.Pipe()
 	stdoutReader, stdoutWriter := io.Pipe()
 	go func() {
-		if err := c.run(ctx, stdoutWriter, append(ros, withStdin(stdinReader))...); err != nil {
+		if err := c.run(ctx, stdoutWriter, append(ros, WithStdin(stdinReader))...); err != nil {
 			stdinReader.CloseWithError(err)
 			stdoutWriter.CloseWithError(err)
 		} else {
@@ -90,7 +90,7 @@ func (c *Command) run(ctx context.Context, stdOut io.Writer, ros ...RunOpts) err
 	if opts.Env == nil {
 		cmd.Env = os.Environ()
 	} else {
-		cmd.Env = opts.Env
+		cmd.Env = append(os.Environ(), opts.Env...)
 	}
 	stdErr := new(bytes.Buffer)
 	process.SetSysProcAttribute(cmd)
@@ -101,13 +101,6 @@ func (c *Command) run(ctx context.Context, stdOut io.Writer, ros ...RunOpts) err
 	cmd.Stdin = opts.Stdin
 	if err := cmd.Start(); err != nil {
 		return stdErrorResult(err, bytesToString(stdErr.Bytes()))
-	}
-	if opts.PipelineFunc != nil {
-		err := opts.PipelineFunc()
-		if err != nil {
-			_ = cmd.Wait()
-			return stdErrorResult(err, bytesToString(stdErr.Bytes()))
-		}
 	}
 	err := cmd.Wait()
 	if err != nil && ctx.Err() != context.DeadlineExceeded {

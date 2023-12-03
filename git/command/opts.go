@@ -2,15 +2,10 @@ package command
 
 import "io"
 
-type ReadCloserWrapper interface {
-	io.Reader
-	CloseWithError(error) error
-}
-
 type runOpts struct {
 	Env          []string
 	Dir          string
-	Stdin        ReadCloserWrapper
+	Stdin        io.Reader
 	PipelineFunc func() error
 }
 
@@ -28,14 +23,8 @@ func WithDir(dir string) RunOpts {
 	}
 }
 
-func withStdin(reader ReadCloserWrapper) RunOpts {
+func WithStdin(reader io.Reader) RunOpts {
 	return func(opts *runOpts) {
 		opts.Stdin = reader
-	}
-}
-
-func WithPipelineFunc(fn func() error) RunOpts {
-	return func(opts *runOpts) {
-		opts.PipelineFunc = fn
 	}
 }

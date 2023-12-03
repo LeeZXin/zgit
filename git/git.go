@@ -1,10 +1,12 @@
 package git
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/property/static"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -198,4 +200,78 @@ func UnsetAllGlobalConfig(k, v string) error {
 		return nil
 	}
 	return fmt.Errorf("failed to get git config %s, err: %w", k, err)
+}
+
+// IsReferenceExist returns true if given reference exists in the repository.
+func IsReferenceExist(ctx context.Context, repoPath, name string) bool {
+	_, err := command.NewCommand("show-ref", "--verify", "--", name).Run(ctx, command.WithDir(repoPath))
+	return err == nil
+}
+
+// IsBranchExist returns true if given branch exists in the repository.
+func IsBranchExist(ctx context.Context, repoPath, name string) bool {
+	if !strings.HasPrefix(name, BranchPrefix) {
+		name = BranchPrefix + name
+	}
+	return IsReferenceExist(ctx, repoPath, name)
+}
+
+func HashObject(ctx context.Context, repoPath string, reader io.Reader) (string, error) {
+	result, err := command.NewCommand("hash-object", "-w", "--stdin").
+		Run(ctx, command.WithDir(repoPath), command.WithStdin(reader))
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(result.ReadAsString()), nil
+}
+
+func AddObjectToIndex(ctx context.Context, repoPath, mode, object, filename string) error {
+	_, err := command.NewCommand("update-index", "--add", "--replace", "--cacheinfo", mode, object, filename).
+		Run(ctx, command.WithDir(repoPath))
+	return err
+}
+
+// RemoveFilesFromIndex removes given filenames from the index - it does not check whether they are present.
+func RemoveFilesFromIndex(ctx context.Context, repoPath string, filenames ...string) error {
+	buffer := new(bytes.Buffer)
+	for _, file := range filenames {
+		if file != "" {
+			buffer.WriteString("0 0000000000000000000000000000000000000000\t")
+			buffer.WriteString(file)
+			buffer.WriteByte('\000')
+		}
+	}
+	_, err := command.NewCommand("update-index", "--remove", "-z", "--index-info").
+		Run(ctx, command.WithDir(repoPath), command.WithStdin(bytes.NewReader(buffer.Bytes())))
+	return err
+}
+
+// WriteTree writes the current index as a tree to the object db and returns its hash
+func WriteTree(ctx context.Context, repoPath string) (*Tree, error) {
+	result, err := command.NewCommand("write-tree").Run(ctx, command.WithDir(repoPath))
+	if err != nil {
+		return nil, err
+	}
+	return NewTree(strings.TrimSpace(result.ReadAsString())), nil
+}
+
+type CommitTreeOpts struct {
+	Parents []string
+	Message string
+}
+
+// CommitTree creates a commit from a given tree id for the user with provided message
+func CommitTree(ctx context.Context, repoPath string, tree *Tree, opts CommitTreeOpts) (string, error) {
+	cmd := command.NewCommand("commit-tree", tree.Id, "--no-gpg-sign")
+	for _, parent := range opts.Parents {
+		cmd.AddArgs("-p", parent)
+	}
+	message := new(bytes.Buffer)
+	message.WriteString(opts.Message)
+	message.WriteString("\n")
+	result, err := cmd.Run(ctx, command.WithDir(repoPath), command.WithStdin(message))
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(result.ReadAsString()), nil
 }

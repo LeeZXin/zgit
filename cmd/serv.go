@@ -187,7 +187,7 @@ func gitAction(ctx context.Context, user KeyUser, words []string) error {
 	}
 	process.SetSysProcAttribute(gitcmd)
 	stderr := &bytes.Buffer{}
-	gitcmd.Dir = setting.RepoRootDir()
+	gitcmd.Dir = setting.RepoDir()
 	gitcmd.Stdout = os.Stdout
 	gitcmd.Stdin = os.Stdin
 	gitcmd.Stderr = stderr

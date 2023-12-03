@@ -5,13 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/LeeZXin/zsf-utils/strutil"
+	"github.com/LeeZXin/zsf-utils/idutil"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
-	"time"
 	"zgit/git/command"
 	"zgit/setting"
 	"zgit/util"
@@ -39,16 +37,7 @@ type PreparePullRequestInfo struct {
 }
 
 type MergeRepoOpts struct {
-	Message  string
-	SigKeyId string
-}
-
-func MergeBase(ctx context.Context, repoPath, target, head string) (string, error) {
-	result, err := command.NewCommand("merge-base", "--", target, head).Run(ctx, command.WithDir(repoPath))
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(result.ReadAsString()), err
+	Message string
 }
 
 func PreparePullRequest(ctx context.Context, repoPath, target, head string) (*PreparePullRequestInfo, error) {
@@ -132,13 +121,10 @@ func doMerge(ctx context.Context, repoPath string, pr *PreparePullRequestInfo, o
 	if len(pr.Commits) == 0 {
 		return errors.New("nothing to commit")
 	}
-	tempDir := filepath.Join(setting.TempDir(), "merge-"+strconv.FormatInt(time.Now().UnixNano(), 10)[10:]+strutil.RandomStr(3))
+	tempDir := filepath.Join(setting.TempDir(), "merge-"+idutil.RandomUuid())
 	defer util.RemoveAll(tempDir)
 	var err error
 	if err = initEmptyRepository(ctx, tempDir, false); err != nil {
-		return err
-	}
-	if err = addCacheRepo(tempDir, repoPath); err != nil {
 		return err
 	}
 	if _, err = command.NewCommand("remote", "add", "-t", pr.OriginHead, "-m", pr.OriginHead, "origin", repoPath).
@@ -210,12 +196,7 @@ func doMerge(ctx context.Context, repoPath string, pr *PreparePullRequestInfo, o
 		}
 		return fmt.Errorf("git merge err: %v", err)
 	}
-	mergeCmd := command.NewCommand("commit", "-m", opts.Message)
-	if opts.SigKeyId == "" {
-		mergeCmd.AddArgs("--no-gpg-sign")
-	} else {
-		mergeCmd.AddArgs(fmt.Sprintf("-S%s", opts.SigKeyId))
-	}
+	mergeCmd := command.NewCommand("commit", "--no-gpg-sign", "-m", opts.Message)
 	if _, err = mergeCmd.Run(ctx, command.WithDir(tempDir)); err != nil {
 		return err
 	}
@@ -231,21 +212,6 @@ func doMerge(ctx context.Context, repoPath string, pr *PreparePullRequestInfo, o
 			}
 		}
 		return fmt.Errorf("git push: %v", err)
-	}
-	return nil
-}
-
-// addCacheRepo adds git alternatives for the cacheRepoPath in the repoPath
-func addCacheRepo(repoPath, cacheRepoPath string) error {
-	p := filepath.Join(repoPath, ".git", "objects", "info", "alternates")
-	f, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	data := filepath.Join(cacheRepoPath, "objects")
-	if _, err = fmt.Fprintln(f, data); err != nil {
-		return err
 	}
 	return nil
 }

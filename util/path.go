@@ -23,7 +23,11 @@ func IsExist(path string) (bool, error) {
 }
 
 func JoinRepoPath(v ...string) string {
-	return filepath.Join(setting.RepoRootDir(), filepath.Join(v...)+".git")
+	return filepath.Join(setting.RepoDir(), filepath.Join(v...)+".git")
+}
+
+func JoinWikiPath(v ...string) string {
+	return filepath.Join(setting.RepoDir(), filepath.Join(v...)+".wiki")
 }
 
 // RemoveAll removes the named file or (empty) directory with at most 5 attempts.

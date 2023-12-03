@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	dataDir, homeDir, appPath, repoRootDir string
+	dataDir, homeDir, appPath, repoDir string
 
 	tempDir string
 
@@ -31,15 +31,15 @@ func init() {
 	}
 	dataDir = filepath.Join(pwd, "data")
 	homeDir = filepath.Join(dataDir, "home")
-	repoRootDir = filepath.Join(dataDir, "repo")
+	repoDir = filepath.Join(dataDir, "repo")
 	tempDir = filepath.Join(dataDir, "temp")
 	err = os.MkdirAll(homeDir, os.ModePerm)
 	if err != nil {
 		logger.Logger.Panicf("zgit os.MkdirAll homeDir err: %v", err)
 	}
-	err = os.MkdirAll(repoRootDir, os.ModePerm)
+	err = os.MkdirAll(repoDir, os.ModePerm)
 	if err != nil {
-		logger.Logger.Panicf("zgit os.MkdirAll repoRootDir err: %v", err)
+		logger.Logger.Panicf("zgit os.MkdirAll repoDir err: %v", err)
 	}
 	err = os.MkdirAll(tempDir, os.ModePerm)
 	if err != nil {
@@ -105,8 +105,8 @@ func IsDebugRunMode() bool {
 	return zsf.GetRunMode() == "debug"
 }
 
-func RepoRootDir() string {
-	return repoRootDir
+func RepoDir() string {
+	return repoDir
 }
 
 func ResourcesDir() string {
