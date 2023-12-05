@@ -15,7 +15,7 @@ func ShowFileTextContentByCommitId(ctx context.Context, repoPath, commitId, file
 		if i < startLine {
 			return true, nil
 		}
-		if i >= startLine && i < endLine {
+		if limit < 0 || (i >= startLine && i < endLine) {
 			ret = append(ret, line)
 			return true, nil
 		}

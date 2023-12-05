@@ -3,6 +3,7 @@ package git
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/LeeZXin/zsf-utils/listutil"
 	"io"
@@ -11,7 +12,7 @@ import (
 	"strings"
 	"time"
 	"zgit/git/command"
-	"zgit/gpg"
+	"zgit/signature"
 )
 
 const (
@@ -24,17 +25,51 @@ var (
 )
 
 type Commit struct {
-	Id               string     `json:"id"`
-	Tree             *Tree      `json:"tree"`
-	Parent           []string   `json:"parent"`
-	Author           *User      `json:"author"`
-	AuthorSigTime    *time.Time `json:"authorSigTime"`
-	Committer        *User      `json:"committer"`
-	CommitterSigTime *time.Time `json:"committerSigTime"`
-	GpgSig           string     `json:"gpgSig"`
-	CommitMsg        string     `json:"commitMsg"`
+	Id               string
+	Tree             *Tree
+	Parent           []string
+	Author           *User
+	AuthorSigTime    *time.Time
+	Committer        *User
+	CommitterSigTime *time.Time
+	GpgSig           signature.GPGSig
+	CommitMsg        string
+	Tag              *Tag
+	Payload          string
+}
 
-	Tag *Tag `json:"-"`
+func (c *Commit) VerifyGPGSignature(pubKeys ...*signature.GPGPublicKey) error {
+	if c.GpgSig == "" {
+		return errors.New("no need to verify gpg")
+	}
+	if len(pubKeys) == 0 {
+		return errors.New("empty pubKeys")
+	}
+	sig, err := signature.ParseGPGSignature(c.GpgSig)
+	if err != nil {
+		return err
+	}
+	hashContent, err := sig.HashObject([]byte(c.Payload))
+	if err != nil {
+		return err
+	}
+	for _, key := range pubKeys {
+		err = key.VerifySignature(hashContent, sig.Signature)
+		if err == nil {
+			return nil
+		}
+	}
+	return errors.New("verify failed")
+}
+
+func (c *Commit) VerifySshSignature(publicKey string) error {
+	if c.GpgSig == "" {
+		return errors.New("no need to verify gpg")
+	}
+	if publicKey == "" {
+		return errors.New("empty publicKey")
+	}
+	return signature.VerifySshSignature(c.GpgSig.String(), c.Payload, publicKey)
 }
 
 func NewCommit(id string) *Commit {
@@ -45,13 +80,13 @@ func NewCommit(id string) *Commit {
 }
 
 type Tag struct {
-	Id        string     `json:"id"`
-	Object    string     `json:"object"`
-	Typ       string     `json:"typ"`
-	Tag       string     `json:"tag"`
-	Tagger    *User      `json:"tagger"`
-	TagTime   *time.Time `json:"tagTime"`
-	CommitMsg string     `json:"commitMsg"`
+	Id        string
+	Object    string
+	Typ       string
+	Tag       string
+	Tagger    *User
+	TagTime   *time.Time
+	CommitMsg string
 }
 
 type Tree struct {
@@ -201,22 +236,30 @@ func genTag(r io.Reader, tag *Tag) error {
 func genCommit(r io.Reader, commit *Commit) error {
 	reader := bufio.NewReader(r)
 	commitMsg := strings.Builder{}
+	payload := strings.Builder{}
 	defer func() {
 		commit.CommitMsg = commitMsg.String()
+		commit.Payload = payload.String()
 	}()
 	for {
 		line, isPrefix, err := reader.ReadLine()
+		if isPrefix {
+			continue
+		}
 		if err == io.EOF {
 			return nil
 		}
 		if err != nil {
 			return fmt.Errorf("read line err: %v", err)
 		}
-		if isPrefix {
-			continue
-		}
-		lineStr := strings.TrimSpace(string(line))
+		rowLine := string(line)
+		lineStr := strings.TrimSpace(rowLine)
 		fields := strings.Fields(lineStr)
+		// 记录非签名数据
+		if len(fields) < 1 || fields[0] != "gpgsig" {
+			payload.WriteString(rowLine)
+			payload.WriteString("\n")
+		}
 		if len(fields) < 1 {
 			continue
 		}
@@ -230,8 +273,11 @@ func genCommit(r io.Reader, commit *Commit) error {
 		case "committer":
 			commit.Committer, commit.CommitterSigTime = parseUserAndTime(fields[1:])
 		case "gpgsig":
+			if len(fields) <= 1 {
+				continue
+			}
 			sigPayload := strings.Builder{}
-			sigPayload.WriteString(gpg.StartLineTag + "\n")
+			sigPayload.WriteString(strings.TrimPrefix(lineStr, "gpgsig ") + "\n")
 			for {
 				line, isPrefix, err = reader.ReadLine()
 				if err == io.EOF {
@@ -243,13 +289,13 @@ func genCommit(r io.Reader, commit *Commit) error {
 				if isPrefix {
 					continue
 				}
-				lineStr := string(line)
+				lineStr = strings.TrimSpace(string(line))
 				sigPayload.WriteString(lineStr + "\n")
-				if strings.TrimSpace(lineStr) == gpg.EndLineTag {
+				if lineStr == signature.EndGPGSigLineTag || lineStr == signature.EndSSHSigLineTag {
 					break
 				}
 			}
-			commit.GpgSig = sigPayload.String()
+			commit.GpgSig = signature.GPGSig(sigPayload.String())
 		default:
 			commitMsg.WriteString(lineStr + "\n")
 		}

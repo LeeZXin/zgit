@@ -12,6 +12,7 @@ require (
 )
 
 require (
+	github.com/42wim/sshsig v0.0.0-20211121163825-841cf5bbc121 // indirect
 	github.com/RoaringBitmap/roaring v0.4.23 // indirect
 	github.com/SkyAPM/go2sky v1.5.0 // indirect
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect

@@ -41,12 +41,8 @@ func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 }
 
 func sessionHandler(session ssh.Session) {
-	isDebugRunMode := setting.IsDebugRunMode()
 	keyID := fmt.Sprintf("%d", session.Context().Value(zgitKeyID).(int64))
 	command := session.RawCommand()
-	if isDebugRunMode {
-		logger.Logger.Debug("SSH: Payload: %v", command)
-	}
 	logger.Logger.Infof("SSH: Payload: %v", command)
 	args := []string{"serv", "key-" + keyID}
 	ctx, cancel := context.WithCancel(session.Context())
@@ -86,9 +82,6 @@ func sessionHandler(session ssh.Session) {
 	process.SetSysProcAttribute(cmd)
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
-	if isDebugRunMode {
-		logger.Logger.Debugf("cmd: %v", cmd.String())
-	}
 	if err = cmd.Start(); err != nil {
 		logger.Logger.Error("SSH: Start: %v", err)
 		return
