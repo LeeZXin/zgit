@@ -9,6 +9,7 @@ var (
 	cmdList = []*cli.Command{
 		Serv,
 		Web,
+		Proxy,
 	}
 )
 

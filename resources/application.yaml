@@ -3,4 +3,6 @@ application:
 
 ssh:
   server:
+    port: 3333
+  proxy:
     port: 2222

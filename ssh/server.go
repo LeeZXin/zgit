@@ -2,9 +2,9 @@ package ssh
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/LeeZXin/zsf/logger"
+	"github.com/LeeZXin/zsf/property/static"
 	"github.com/gliderlabs/ssh"
 	gossh "golang.org/x/crypto/ssh"
 	"io"
@@ -21,61 +21,106 @@ import (
 
 type contextKey string
 
-const zgitKeyID = contextKey("zgit-key-id")
+const (
+	zgitKeyId = contextKey("zgit-key-id")
+
+	standaloneMode = "standalone"
+)
+
+var (
+	mode = static.GetString("cluster.mode")
+)
+
+func init() {
+	if mode == "" {
+		mode = standaloneMode
+	}
+}
+
+type UserInfo struct {
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	ClusterId string `json:"clusterId"`
+}
 
 func sshConnectionFailed(net.Conn, error) {}
 
 func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
-	isDebugRunMode := setting.IsDebugRunMode()
-	if isDebugRunMode {
-		logger.Logger.Debugf("Handle Public Key: Fingerprint: %s from %s with user %s", gossh.FingerprintSHA256(key), ctx.RemoteAddr(), ctx.User())
-	}
 	if ctx.User() != setting.GitUser() {
 		return false
 	}
-	if isDebugRunMode {
-		logger.Logger.Debug(strings.TrimSpace(string(gossh.MarshalAuthorizedKey(key))))
+	keyContent := strings.TrimSpace(string(gossh.MarshalAuthorizedKey(key)))
+	if mode == standaloneMode {
+		userInfo, b, err := getUserInfoByPublicKey(keyContent)
+		if !b || err != nil {
+			return false
+		}
+		ctx.SetValue(zgitKeyId, userInfo.Id)
+	} else {
+		b, err := existNodeInfoByPublicKey(keyContent)
+		if !b || err != nil {
+			return false
+		}
 	}
-	ctx.SetValue(zgitKeyID, int64(1))
 	return true
 }
 
+func getUserInfoByPublicKey(pubKey string) (*UserInfo, bool, error) {
+	return &UserInfo{
+		Name:  "zexin",
+		Email: "zexin@fake.local",
+	}, true, nil
+}
+
+func existNodeInfoByPublicKey(pubKey string) (bool, error) {
+	return true, nil
+}
+
 func sessionHandler(session ssh.Session) {
-	keyID := fmt.Sprintf("%d", session.Context().Value(zgitKeyID).(int64))
-	command := session.RawCommand()
-	logger.Logger.Infof("SSH: Payload: %v", command)
-	args := []string{"serv", "key-" + keyID}
 	ctx, cancel := context.WithCancel(session.Context())
 	defer cancel()
-	gitProtocol := ""
-	for _, env := range session.Environ() {
-		if strings.HasPrefix(env, "GIT_PROTOCOL=") {
-			_, gitProtocol, _ = strings.Cut(env, "=")
-			break
+	var keyID string
+	if mode == standaloneMode {
+		keyID = session.Context().Value(zgitKeyId).(string)
+	} else {
+		for _, env := range session.Environ() {
+			if strings.HasPrefix(env, "ZGIT_LOGIN_USER") {
+				_, after, f := strings.Cut(env, "ZGIT_LOGIN_USER")
+				if f {
+					keyID = after
+				}
+			}
 		}
 	}
-	cmd := exec.CommandContext(ctx, setting.AppPath(), args...)
+	if keyID == "" {
+		fmt.Fprintf(session.Stderr(), "lost login user")
+		session.Exit(1)
+		return
+	}
+	command := session.RawCommand()
+	cmd := exec.CommandContext(ctx, setting.AppPath(), "serv", "key-"+keyID)
 	cmd.Env = append(
 		os.Environ(),
 		"SSH_ORIGINAL_COMMAND="+command,
 		"SKIP_MINWINSVC=1",
-		"GIT_PROTOCOL="+gitProtocol,
+	)
+	cmd.Env = append(
+		cmd.Env,
+		session.Environ()...,
 	)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		logger.Logger.Error("SSH: StdoutPipe: %v", err)
 		return
 	}
 	defer stdout.Close()
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		logger.Logger.Error("SSH: StderrPipe: %v", err)
 		return
 	}
 	defer stderr.Close()
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		logger.Logger.Error("SSH: StdinPipe: %v", err)
 		return
 	}
 	defer stdin.Close()
@@ -83,39 +128,25 @@ func sessionHandler(session ssh.Session) {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	if err = cmd.Start(); err != nil {
-		logger.Logger.Error("SSH: Start: %v", err)
 		return
 	}
 	go func() {
 		defer stdin.Close()
-		if _, err := io.Copy(stdin, session); err != nil {
-			logger.Logger.Error("Failed to write session to stdin. %s", err)
-		}
+		io.Copy(stdin, session)
 	}()
 	go func() {
 		defer wg.Done()
 		defer stdout.Close()
-		if _, err := io.Copy(session, stdout); err != nil {
-			logger.Logger.Error("Failed to write stdout to session. %s", err)
-		}
+		io.Copy(session, stdout)
 	}()
 	go func() {
 		defer wg.Done()
 		defer stderr.Close()
-		if _, err := io.Copy(session.Stderr(), stderr); err != nil {
-			logger.Logger.Error("Failed to write stderr to session. %s", err)
-		}
+		io.Copy(session.Stderr(), stderr)
 	}()
 	wg.Wait()
 	err = cmd.Wait()
-	if err != nil {
-		if _, ok := err.(*exec.ExitError); !ok {
-			logger.Logger.Error("SSH: Wait: %v", err)
-		}
-	}
-	if err = session.Exit(getExitStatusFromError(err)); err != nil && !errors.Is(err, io.EOF) {
-		logger.Logger.Error("Session failed to exit. %s", err)
-	}
+	session.Exit(getExitStatusFromError(err))
 }
 
 func getExitStatusFromError(err error) int {
