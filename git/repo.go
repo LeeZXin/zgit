@@ -77,7 +77,7 @@ func InitRepository(ctx context.Context, repo Repository, opts InitRepoOpts) err
 		branch = setting.DefaultBranch()
 	}
 	SetDefaultBranch(ctx, repo.Path, branch)
-	return nil
+	return InitRepoHook(repo.Path)
 }
 
 func initTemporaryRepository(ctx context.Context, repo Repository, tmpDir string, opts InitRepoOpts) error {

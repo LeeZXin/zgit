@@ -5,9 +5,9 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"github.com/LeeZXin/zsf-utils/quit"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/property/static"
-	"github.com/LeeZXin/zsf/zsf"
 	gossh "golang.org/x/crypto/ssh"
 	"os"
 	"path/filepath"
@@ -43,7 +43,13 @@ func InitSsh() {
 			logger.Logger.Panicf("gen host key pair failed %s: %v", serverHostKey, err)
 		}
 	}
-	zsf.RegisterApplicationLifeCycle(newServer())
+}
+
+func StartServer() {
+	s := newServer()
+	quit.AddShutdownHook(s.Shutdown)
+	s.Start()
+	quit.Wait()
 }
 
 func genKeyPair(keyPath string) error {

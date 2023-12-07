@@ -69,9 +69,7 @@ func StartSSHProxy() {
 		HostKeyCallback: gossh.InsecureIgnoreHostKey(),
 	}
 	s := newServer()
-	quit.AddShutdownHook(func() {
-		s.Shutdown()
-	})
+	quit.AddShutdownHook(s.Shutdown)
 	s.Start()
 	quit.Wait()
 }

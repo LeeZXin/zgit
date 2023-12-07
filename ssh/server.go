@@ -196,7 +196,7 @@ func newServer() *server {
 	}
 }
 
-func (s *server) OnApplicationStart() {
+func (s *server) Start() {
 	go func() {
 		logger.Logger.Infof("start ssh server port: %d", serverPort)
 		err := s.ListenAndServe()
@@ -206,9 +206,7 @@ func (s *server) OnApplicationStart() {
 	}()
 }
 
-func (s *server) AfterInitialize() {}
-
-func (s *server) OnApplicationShutdown() {
+func (s *server) Shutdown() {
 	logger.Logger.Info("shutdown ssh server")
 	s.Close()
 }

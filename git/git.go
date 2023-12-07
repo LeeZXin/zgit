@@ -38,9 +38,9 @@ const (
 	TagPrefix       = "refs/tags/"
 	TimeLayout      = "Mon Jan _2 15:04:05 2006 -0700"
 	PrettyLogFormat = "--pretty=format:%H"
-	RemotePrefix    = "refs/remotes/"
-	PullPrefix      = "refs/pull/"
 )
+
+const notRegularFileMode = os.ModeSymlink | os.ModeNamedPipe | os.ModeSocket | os.ModeDevice | os.ModeCharDevice | os.ModeIrregular
 
 var (
 	SupportProcReceive = CheckGitVersionAtLeast("2.29") == nil
@@ -274,4 +274,28 @@ func CommitTree(ctx context.Context, repoPath string, tree *Tree, opts CommitTre
 		return "", err
 	}
 	return strings.TrimSpace(result.ReadAsString()), nil
+}
+
+func GetRepoSize(path string) (int64, error) {
+	var size int64
+	err := filepath.WalkDir(path, func(_ string, info os.DirEntry, err error) error {
+		if err != nil {
+			if os.IsNotExist(err) { // ignore the error because the file maybe deleted during traversing.
+				return nil
+			}
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		f, err := info.Info()
+		if err != nil {
+			return err
+		}
+		if (f.Mode() & notRegularFileMode) == 0 {
+			size += f.Size()
+		}
+		return err
+	})
+	return size, err
 }
