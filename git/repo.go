@@ -70,13 +70,16 @@ func InitRepository(ctx context.Context, repo Repository, opts InitRepoOpts) err
 			return fmt.Errorf("failed to create temp dir for repository %s: %w", repo.Path, err)
 		}
 		defer util.RemoveAll(tmpDir)
-		return initTemporaryRepository(ctx, repo, tmpDir, opts)
+		if err = initTemporaryRepository(ctx, repo, tmpDir, opts); err != nil {
+			return err
+		}
+	} else {
+		branch := opts.DefaultBranch
+		if branch == "" {
+			branch = setting.DefaultBranch()
+		}
+		SetDefaultBranch(ctx, repo.Path, branch)
 	}
-	branch := opts.DefaultBranch
-	if branch == "" {
-		branch = setting.DefaultBranch()
-	}
-	SetDefaultBranch(ctx, repo.Path, branch)
 	return InitRepoHook(repo.Path)
 }
 

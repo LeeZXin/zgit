@@ -8,7 +8,7 @@ import (
 
 var Git = &cli.Command{
 	Name:        "git",
-	Usage:       "This command starts zgit ssh server",
+	Usage:       "This command starts zgit git server",
 	Description: "zgit",
 	Action:      runGit,
 }

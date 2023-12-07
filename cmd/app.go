@@ -21,7 +21,7 @@ func NewCliApp() *cli.App {
 	app.Commands = append(app.Commands, cmdList...)
 	app.Name = "zgit"
 	app.Usage = "A Serv service with zsf"
-	app.Description = "by default, it will start the web-server"
+	app.Description = "by default, it will start the git server"
 	app.Version = formatBuiltWith()
 	return app
 }
