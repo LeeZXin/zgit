@@ -10,8 +10,8 @@ import (
 	"syscall"
 )
 
-func initWaitContext() (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(context.Background())
+func initWaitContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		signalChannel := make(chan os.Signal, 1)
 		signal.Notify(

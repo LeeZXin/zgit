@@ -3,8 +3,10 @@ module zgit
 go 1.20
 
 require (
-	github.com/LeeZXin/zsf v1.0.81
-	github.com/LeeZXin/zsf-utils v1.0.26
+	github.com/42wim/sshsig v0.0.0-20211121163825-841cf5bbc121
+	github.com/LeeZXin/zsf v1.0.82
+	github.com/LeeZXin/zsf-utils v1.0.27
+	github.com/gin-gonic/gin v1.9.1
 	github.com/gliderlabs/ssh v0.3.5
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/urfave/cli/v2 v2.25.7
@@ -12,7 +14,6 @@ require (
 )
 
 require (
-	github.com/42wim/sshsig v0.0.0-20211121163825-841cf5bbc121 // indirect
 	github.com/RoaringBitmap/roaring v0.4.23 // indirect
 	github.com/SkyAPM/go2sky v1.5.0 // indirect
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
@@ -40,7 +41,6 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
-	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/glycerine/go-unsnap-stream v0.0.0-20181221182339-f9677308dec2 // indirect
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect

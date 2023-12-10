@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"github.com/LeeZXin/zsf-utils/httputil"
@@ -48,7 +49,7 @@ func runPreReceive(c *cli.Context) error {
 	if isInternal, _ := strconv.ParseBool(os.Getenv(git.EnvIsInternal)); isInternal {
 		return nil
 	}
-	_, cancel := initWaitContext()
+	ctx, cancel := initWaitContext(c.Context)
 	defer cancel()
 	fmt.Println("Welcome to ZGIT")
 	// 获取仓库大小限制
@@ -66,11 +67,11 @@ func runPreReceive(c *cli.Context) error {
 		fmt.Printf("checking repo size: %s\n", util.VolumeReadable(repoSize))
 		return fmt.Errorf("repo size exceeded limit")
 	}
-	return scanStdinAndDoHttp(hook.ApiPreReceiveUrl)
+	return scanStdinAndDoHttp(ctx, hook.ApiPreReceiveUrl)
 }
 
 // scanStdinAndDoHttp 处理输入并发送http
-func scanStdinAndDoHttp(httpUrl string) error {
+func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
 	infoList := make([]hook.RevInfo, 0)
 	// the environment is set by serv command
 	isWiki, _ := strconv.ParseBool(os.Getenv(git.EnvRepoIsWiki))
@@ -104,7 +105,7 @@ func scanStdinAndDoHttp(httpUrl string) error {
 			RepoId:      repoId,
 			PrId:        prId,
 		}
-		if err := doHttp(client, reqVO, httpUrl); err != nil {
+		if err := doHttp(ctx, client, reqVO, httpUrl); err != nil {
 			return fmt.Errorf("do internal api failed: %v", err)
 		}
 	}
@@ -115,14 +116,14 @@ func runHookPostReceive(c *cli.Context) error {
 	if isInternal, _ := strconv.ParseBool(os.Getenv(git.EnvIsInternal)); isInternal {
 		return nil
 	}
-	_, cancel := initWaitContext()
+	ctx, cancel := initWaitContext(c.Context)
 	defer cancel()
-	return scanStdinAndDoHttp(hook.ApiPostReceiveUrl)
+	return scanStdinAndDoHttp(ctx, hook.ApiPostReceiveUrl)
 }
 
-func doHttp(client *http.Client, reqVO hook.OptsReqVO, url string) error {
+func doHttp(ctx context.Context, client *http.Client, reqVO hook.OptsReqVO, url string) error {
 	resp := hook.HttpRespVO{}
-	err := httputil.Post(client,
+	err := httputil.Post(ctx, client,
 		fmt.Sprintf("http://localhost:%d/%s", common.DefaultHttpServerPort, url),
 		nil,
 		reqVO,
