@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"fmt"
+	"github.com/LeeZXin/zsf/starter"
 	"github.com/urfave/cli/v2"
-	"zgit/git"
-	"zgit/ssh"
+	"zgit/pkg/git"
+	"zgit/sshserv"
 )
 
 var Git = &cli.Command{
@@ -13,9 +15,10 @@ var Git = &cli.Command{
 	Action:      runGit,
 }
 
-func runGit(c *cli.Context) error {
-	ssh.InitSsh()
+func runGit(*cli.Context) error {
+	sshserv.InitSsh()
 	git.InitGit()
-	ssh.StartServer()
+	fmt.Println(git.GetRepoSize("/Users/lizexin/go/src/zgit/data/repo/zero/g001/ai.git"))
+	starter.Run()
 	return nil
 }

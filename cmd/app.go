@@ -7,9 +7,9 @@ import (
 
 var (
 	cmdList = []*cli.Command{
-		Serv,
 		Git,
 		Proxy,
+		Hook,
 	}
 )
 

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/urfave/cli/v2"
-	"zgit/proxy"
+	"zgit/sshserv/proxy"
 )
 
 var Proxy = &cli.Command{
@@ -12,7 +12,7 @@ var Proxy = &cli.Command{
 	Action:      runProxy,
 }
 
-func runProxy(c *cli.Context) error {
+func runProxy(*cli.Context) error {
 	proxy.StartSSHProxy()
 	return nil
 }
