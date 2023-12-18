@@ -199,7 +199,7 @@ package lfs
 //			return
 //		}
 //
-//		meta, err := git_model.GetLFSMetaObjectByOid(ctx, repository.ID, p.Oid)
+//		meta, err := git_model.GetLFSMetaObjectByOid(ctx, repository.LockId, p.Oid)
 //		if err != nil && err != git_model.ErrLFSObjectNotExist {
 //			log.Error("Unable to get LFS MetaObject [%s] for %s/%s. Error: %v", p.Oid, rc.User, rc.Repo, err)
 //			writeStatus(ctx, http.StatusInternalServerError)
@@ -232,7 +232,7 @@ package lfs
 //					return
 //				}
 //				if accessible {
-//					_, err := git_model.NewLFSMetaObject(ctx, &git_model.LFSMetaObject{Pointer: p, RepositoryID: repository.ID})
+//					_, err := git_model.NewLFSMetaObject(ctx, &git_model.LFSMetaObject{Pointer: p, RepositoryID: repository.LockId})
 //					if err != nil {
 //						log.Error("Unable to create LFS MetaObject [%s] for %s/%s. Error: %v", p.Oid, rc.User, rc.Repo, err)
 //						writeStatus(ctx, http.StatusInternalServerError)
@@ -325,7 +325,7 @@ package lfs
 //			log.Error("Error putting LFS MetaObject [%s] into content store. Error: %v", p.Oid, err)
 //			return err
 //		}
-//		_, err := git_model.NewLFSMetaObject(ctx, &git_model.LFSMetaObject{Pointer: p, RepositoryID: repository.ID})
+//		_, err := git_model.NewLFSMetaObject(ctx, &git_model.LFSMetaObject{Pointer: p, RepositoryID: repository.LockId})
 //		return err
 //	}
 //
@@ -338,7 +338,7 @@ package lfs
 //			log.Error("Error whilst uploadOrVerify LFS OID[%s]: %v", p.Oid, err)
 //			writeStatus(ctx, http.StatusInternalServerError)
 //		}
-//		if _, err = git_model.RemoveLFSMetaObjectByOid(ctx, repository.ID, p.Oid); err != nil {
+//		if _, err = git_model.RemoveLFSMetaObjectByOid(ctx, repository.LockId, p.Oid); err != nil {
 //			log.Error("Error whilst removing MetaObject for LFS OID[%s]: %v", p.Oid, err)
 //		}
 //		return
@@ -402,7 +402,7 @@ package lfs
 //		return nil
 //	}
 //
-//	meta, err := git_model.GetLFSMetaObjectByOid(ctx, repository.ID, p.Oid)
+//	meta, err := git_model.GetLFSMetaObjectByOid(ctx, repository.LockId, p.Oid)
 //	if err != nil {
 //		log.Error("Unable to get LFS OID[%s] Error: %v", p.Oid, err)
 //		writeStatus(ctx, http.StatusNotFound)
@@ -516,7 +516,7 @@ package lfs
 //			log.Error("Unable to GetTaskByID for task[%d] Error: %v", taskID, err)
 //			return false
 //		}
-//		if task.RepoId != repository.ID {
+//		if task.RepoId != repository.LockId {
 //			return false
 //		}
 //
@@ -567,7 +567,7 @@ package lfs
 //		return nil, fmt.Errorf("invalid token claim")
 //	}
 //
-//	if claims.RepoId != target.ID {
+//	if claims.RepoId != target.LockId {
 //		return nil, fmt.Errorf("invalid token claim")
 //	}
 //

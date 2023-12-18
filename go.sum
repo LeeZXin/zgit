@@ -42,10 +42,10 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
-github.com/LeeZXin/zsf v1.0.82 h1:MpykmC6hbS69xpgiCnSRcqwoLvyMEyMXl8BxzV3mFJs=
-github.com/LeeZXin/zsf v1.0.82/go.mod h1:ONjPot0kHmI88laeSLfDkDxVlcZwe7fEWZ8mL0a2KjI=
-github.com/LeeZXin/zsf-utils v1.0.27 h1:opDwrUhWwt24cK9CyBJHB0fU7Sqg1/Encw5pEvjpcos=
-github.com/LeeZXin/zsf-utils v1.0.27/go.mod h1:Qx3UQ9RHnvWQNzxk7la92zK1OCVmpNFCxDwwStdDIvc=
+github.com/LeeZXin/zsf v1.0.83 h1:DkBBitEZKBB7nBuzdxEjsLahNc/JnSLWcaDRV9dfgLA=
+github.com/LeeZXin/zsf v1.0.83/go.mod h1:0FsmdtbDSSXA/GTf456MNCHsRDxtVp05eXxiSUVg4FE=
+github.com/LeeZXin/zsf-utils v1.0.28 h1:B+6NSypzzR0GNVGYxyB27dY00ba28EZ5Ky99nVIRkI8=
+github.com/LeeZXin/zsf-utils v1.0.28/go.mod h1:Qx3UQ9RHnvWQNzxk7la92zK1OCVmpNFCxDwwStdDIvc=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/RoaringBitmap/roaring v0.4.23 h1:gpyfd12QohbqhFO4NVDUdoPOCXsyahYRQhINmlHxKeo=
 github.com/RoaringBitmap/roaring v0.4.23/go.mod h1:D0gp8kJQgE1A4LQ5wFLggQEyvDi06Mq5mKs52e1TwOo=
@@ -224,6 +224,8 @@ github.com/gogo/googleapis v1.1.0/go.mod h1:gf4bu3Q80BeJ6H1S1vYPm8/ELATdvryBaNFG
 github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.0/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.1/go.mod h1:hp+jE20tsWTFYpLwKvXlhS1hjn+gTNwPg2I6zVXpSg4=
+github.com/golang-jwt/jwt/v5 v5.2.0 h1:d/ix8ftRUorsN+5eMIlF4T6J8CAt9rch3My2winC1Jw=
+github.com/golang-jwt/jwt/v5 v5.2.0/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
 github.com/golang/groupcache v0.0.0-20160516000752-02826c3e7903/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=

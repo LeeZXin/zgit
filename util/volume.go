@@ -4,8 +4,8 @@ import "fmt"
 
 const (
 	Gib = 1024 * 1024 * 1024
-	Kib = 1024 * 1024
-	Mib = 1024
+	Mib = 1024 * 1024
+	Kib = 1024
 )
 
 func VolumeReadable(b int64) string {

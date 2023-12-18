@@ -33,7 +33,7 @@ package lfs
 //		})
 //		return
 //	}
-//	if repo.ID != lock.RepoID {
+//	if repo.LockId != lock.RepoID {
 //		ctx.JSON(http.StatusOK, api.LFSLockList{
 //			Locks: []*api.LFSLock{},
 //		})
@@ -95,7 +95,7 @@ package lfs
 //		}
 //		lock, err := git_model.GetLFSLockByID(ctx, v)
 //		if err != nil && !git_model.IsErrLFSLockNotExist(err) {
-//			log.Error("Unable to get lock with ID[%s]: Error: %v", v, err)
+//			log.Error("Unable to get lock with LockId[%s]: Error: %v", v, err)
 //		}
 //		handleLockListOut(ctx, repository, lock, err)
 //		return
@@ -112,9 +112,9 @@ package lfs
 //	}
 //
 //	// If no query params path or id
-//	lockList, err := git_model.GetLFSLockByRepoID(ctx, repository.ID, cursor, limit)
+//	lockList, err := git_model.GetLFSLockByRepoID(ctx, repository.LockId, cursor, limit)
 //	if err != nil {
-//		log.Error("Unable to list locks for repository ID[%d]: Error: %v", repository.ID, err)
+//		log.Error("Unable to list locks for repository LockId[%d]: Error: %v", repository.LockId, err)
 //		ctx.JSON(http.StatusInternalServerError, api.LFSLockError{
 //			Message: "unable to list locks : Internal Server Error",
 //		})
@@ -179,8 +179,8 @@ package lfs
 //	}
 //
 //	lock, err := git_model.CreateLFSLock(ctx, repository, &git_model.LFSLock{
-//		Path:    req.Path,
-//		OwnerID: ctx.Doer.ID,
+//		RelativePath:    req.RelativePath,
+//		OwnerID: ctx.Doer.LockId,
 //	})
 //	if err != nil {
 //		if git_model.IsErrLFSLockAlreadyExist(err) {
@@ -197,7 +197,7 @@ package lfs
 //			})
 //			return
 //		}
-//		log.Error("Unable to CreateLFSLock in repository %-v at %s for user %-v: Error: %v", repository, req.Path, ctx.Doer, err)
+//		log.Error("Unable to CreateLFSLock in repository %-v at %s for user %-v: Error: %v", repository, req.RelativePath, ctx.Doer, err)
 //		ctx.JSON(http.StatusInternalServerError, api.LFSLockError{
 //			Message: "internal server error : Internal Server Error",
 //		})
@@ -249,9 +249,9 @@ package lfs
 //	} else if limit < 0 {
 //		limit = 0
 //	}
-//	lockList, err := git_model.GetLFSLockByRepoID(ctx, repository.ID, cursor, limit)
+//	lockList, err := git_model.GetLFSLockByRepoID(ctx, repository.LockId, cursor, limit)
 //	if err != nil {
-//		log.Error("Unable to list locks for repository ID[%d]: Error: %v", repository.ID, err)
+//		log.Error("Unable to list locks for repository LockId[%d]: Error: %v", repository.LockId, err)
 //		ctx.JSON(http.StatusInternalServerError, api.LFSLockError{
 //			Message: "unable to list locks : Internal Server Error",
 //		})
@@ -264,7 +264,7 @@ package lfs
 //	lockOursListAPI := make([]*api.LFSLock, 0, len(lockList))
 //	lockTheirsListAPI := make([]*api.LFSLock, 0, len(lockList))
 //	for _, l := range lockList {
-//		if l.OwnerID == ctx.Doer.ID {
+//		if l.OwnerID == ctx.Doer.LockId {
 //			lockOursListAPI = append(lockOursListAPI, convert.ToLFSLock(ctx, l))
 //		} else {
 //			lockTheirsListAPI = append(lockTheirsListAPI, convert.ToLFSLock(ctx, l))

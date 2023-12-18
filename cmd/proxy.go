@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"github.com/urfave/cli/v2"
-	"zgit/sshserv/proxy"
+	"zgit/pkg/sshserv/proxy"
 )
 
 var Proxy = &cli.Command{

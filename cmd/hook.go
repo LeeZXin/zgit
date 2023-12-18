@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/LeeZXin/zsf-utils/httputil"
 	"github.com/LeeZXin/zsf-utils/listutil"
-	"github.com/LeeZXin/zsf/common"
 	"github.com/urfave/cli/v2"
 	"net/http"
 	"os"
@@ -124,7 +123,7 @@ func runHookPostReceive(c *cli.Context) error {
 func doHttp(ctx context.Context, client *http.Client, reqVO hook.OptsReqVO, url string) error {
 	resp := hook.HttpRespVO{}
 	err := httputil.Post(ctx, client,
-		fmt.Sprintf("http://localhost:%d/%s", common.DefaultHttpServerPort, url),
+		fmt.Sprintf("%s/%s", os.Getenv(git.EnvAppUrl), url),
 		nil,
 		reqVO,
 		&resp)

@@ -2,19 +2,24 @@ package gitsrv
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/LeeZXin/zsf/logger"
 	"github.com/gliderlabs/ssh"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/kballard/go-shellquote"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 	"zgit/modules/model/usermd"
 	"zgit/pkg/git"
 	"zgit/pkg/git/command"
 	"zgit/pkg/git/process"
+	"zgit/pkg/lfs"
 	"zgit/pkg/perm"
 	"zgit/setting"
 	"zgit/util"
@@ -69,6 +74,7 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 			lfsVerb = words[2]
 		}
 	}
+	logger.Logger.Info("git cmd: ", words)
 	relativeRepoPath, err := util.ParseRelativeRepoPath(repoPath)
 	if err != nil {
 		return errors.New("Invalid repository path:" + repoPath)
@@ -90,34 +96,66 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 	if err != nil {
 		return errors.New("not authorized")
 	}
-	var gitcmd *exec.Cmd
+	// LFS token authentication
+	if verb == lfsAuthenticateVerb {
+		url := fmt.Sprintf("%s/%s/info/lfs", setting.AppUrl(), repoPath)
+		now := time.Now()
+		claims := lfs.Claims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(now.Add(setting.LfsJwtAuthExpiry())),
+				NotBefore: jwt.NewNumericDate(now),
+			},
+			RepoId: results.RepoId,
+			Op:     lfsVerb,
+			UserId: operator.Id,
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		// Sign and get the complete encoded token as a string using the secret
+		tokenStr, err := token.SignedString(setting.LfsJwtSecretBytes())
+		if err != nil {
+			return fmt.Errorf("failed to sign JWT token: %v", err)
+		}
+		tokenAuthentication := &lfs.TokenRespVO{
+			Header: map[string]string{
+				"Authorization": tokenStr,
+			},
+			Href: url,
+		}
+		err = json.NewEncoder(session).Encode(tokenAuthentication)
+		if err != nil {
+			return fmt.Errorf("failed to encode LFS json response: %v", err)
+		}
+		return nil
+	}
+	var gitCmd *exec.Cmd
 	gitBinPath := filepath.Dir(setting.GitExecutablePath()) // e.g. /usr/bin
 	gitBinVerb := filepath.Join(gitBinPath, verb)           // e.g. /usr/bin/git-upload-pack
 	if _, err = os.Stat(gitBinVerb); err != nil {
 		verbFields := strings.SplitN(verb, "-", 2)
 		if len(verbFields) == 2 {
-			gitcmd = exec.CommandContext(ctx, setting.GitExecutablePath(), verbFields[1], repoPath)
+			gitCmd = exec.CommandContext(ctx, setting.GitExecutablePath(), verbFields[1], repoPath)
 		}
 	}
-	if gitcmd == nil {
-		gitcmd = exec.CommandContext(ctx, gitBinVerb, repoPath)
+	if gitCmd == nil {
+		gitCmd = exec.CommandContext(ctx, gitBinVerb, repoPath)
 	}
-	process.SetSysProcAttribute(gitcmd)
-	gitcmd.Dir = setting.RepoDir()
-	gitcmd.Stdout = session
-	gitcmd.Stdin = session
-	gitcmd.Stderr = session.Stderr()
-	gitcmd.Env = append(gitcmd.Env, os.Environ()...)
-	gitcmd.Env = append(gitcmd.Env,
+	process.SetSysProcAttribute(gitCmd)
+	gitCmd.Dir = setting.RepoDir()
+	gitCmd.Stdout = session
+	gitCmd.Stdin = session
+	gitCmd.Stderr = session.Stderr()
+	gitCmd.Env = append(gitCmd.Env, os.Environ()...)
+	gitCmd.Env = append(gitCmd.Env,
 		util.JoinFields(
 			git.EnvRepoIsWiki, strconv.FormatBool(results.IsWiki),
 			git.EnvRepoPath, filepath.Join(setting.RepoDir(), repoPath),
 			git.EnvRepoID, results.RepoId,
 			git.EnvPusherID, operator.Id,
+			git.EnvAppUrl, setting.AppUrl(),
 		)...,
 	)
-	gitcmd.Env = append(gitcmd.Env, command.CommonEnvs()...)
-	return gitcmd.Run()
+	gitCmd.Env = append(gitCmd.Env, command.CommonEnvs()...)
+	return gitCmd.Run()
 }
 
 func checkAccessMode(ctx context.Context, user usermd.UserInfo, repo util.RelativeRepoPath, accessMode perm.AccessMode, verbs ...string) (ServCommandResults, bool, error) {

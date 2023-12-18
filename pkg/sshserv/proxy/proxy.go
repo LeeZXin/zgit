@@ -17,8 +17,8 @@ import (
 	"zgit/modules/service/gitsrv"
 	"zgit/modules/service/reposrv"
 	"zgit/modules/service/usersrv"
+	"zgit/pkg/sshserv"
 	"zgit/setting"
-	"zgit/sshserv"
 	"zgit/util"
 )
 

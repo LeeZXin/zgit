@@ -15,9 +15,9 @@ import (
 var (
 	dataDir, homeDir, appPath, repoDir string
 
-	tempDir string
+	tempDir, lfsDir string
 
-	appUrl = static.GetString("app.url")
+	appUrl = strings.TrimSuffix(static.GetString("app.url"), "/")
 
 	isWindows = runtime.GOOS == "windows"
 
@@ -33,6 +33,7 @@ func init() {
 	homeDir = filepath.Join(dataDir, "home")
 	repoDir = filepath.Join(dataDir, "repo")
 	tempDir = filepath.Join(dataDir, "temp")
+	lfsDir = filepath.Join(dataDir, "lfs")
 	err = os.MkdirAll(homeDir, os.ModePerm)
 	if err != nil {
 		logger.Logger.Panicf("zgit os.MkdirAll homeDir err: %v", err)
@@ -44,6 +45,10 @@ func init() {
 	err = os.MkdirAll(tempDir, os.ModePerm)
 	if err != nil {
 		logger.Logger.Panicf("zgit os.MkdirAll tempDir err: %v", err)
+	}
+	err = os.MkdirAll(lfsDir, os.ModePerm)
+	if err != nil {
+		logger.Logger.Panicf("zgit os.MkdirAll lfsDir err: %v", err)
 	}
 	path, err := getAppPath()
 	if err != nil {
@@ -115,4 +120,8 @@ func ResourcesDir() string {
 
 func TempDir() string {
 	return tempDir
+}
+
+func LfsDir() string {
+	return lfsDir
 }

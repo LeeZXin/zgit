@@ -1,14 +1,9 @@
 package sshserv
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/property/static"
 	"github.com/LeeZXin/zsf/zsf"
-	gossh "golang.org/x/crypto/ssh"
 	"os"
 	"path/filepath"
 	"zgit/setting"
@@ -46,38 +41,10 @@ func InitSsh() {
 		logger.Logger.Panicf("check host key failed %s: %v", serverHostKey, err)
 	}
 	if !exist {
-		err = genKeyPair(serverHostKey)
+		err = util.GenKeyPair(serverHostKey)
 		if err != nil {
 			logger.Logger.Panicf("gen host key pair failed %s: %v", serverHostKey, err)
 		}
 	}
 	zsf.RegisterApplicationLifeCycle(newServer())
-}
-
-func genKeyPair(keyPath string) error {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		return err
-	}
-	privateKeyPEM := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)}
-	f, err := os.OpenFile(keyPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	if err = pem.Encode(f, privateKeyPEM); err != nil {
-		return err
-	}
-	pub, err := gossh.NewPublicKey(&privateKey.PublicKey)
-	if err != nil {
-		return err
-	}
-	public := gossh.MarshalAuthorizedKey(pub)
-	p, err := os.OpenFile(keyPath+".pub", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		return err
-	}
-	defer p.Close()
-	_, err = p.Write(public)
-	return err
 }

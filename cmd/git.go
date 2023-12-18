@@ -3,8 +3,9 @@ package cmd
 import (
 	"github.com/LeeZXin/zsf/starter"
 	"github.com/urfave/cli/v2"
+	"zgit/api/lfsapi"
 	"zgit/pkg/git"
-	"zgit/sshserv"
+	"zgit/pkg/sshserv"
 )
 
 var Git = &cli.Command{
@@ -17,6 +18,7 @@ var Git = &cli.Command{
 func runGit(*cli.Context) error {
 	sshserv.InitSsh()
 	git.InitGit()
+	lfsapi.InitLfsHttpApi()
 	starter.Run()
 	return nil
 }

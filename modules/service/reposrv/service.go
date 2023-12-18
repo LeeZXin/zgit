@@ -6,5 +6,7 @@ import (
 )
 
 func GetRepoInfoByRelativePath(ctx context.Context, path string) (repomd.RepoInfo, bool, error) {
-	return repomd.RepoInfo{}, true, nil
+	return repomd.RepoInfo{
+		RelativePath: path,
+	}, true, nil
 }

@@ -6,3 +6,12 @@ ssh:
     port: 2222
   proxy:
     port: 2222
+
+http:
+  port: 80
+
+lfs:
+  enabled: true
+
+app:
+  url: http://127.0.0.1

@@ -19,7 +19,7 @@ var (
 )
 
 type Repository struct {
-	Id    string `json:"Id"`
+	Id    string `json:"LockId"`
 	Owner User   `json:"owner"`
 	Name  string `json:"name"`
 	Path  string `json:"path"`

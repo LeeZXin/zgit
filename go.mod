@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	github.com/42wim/sshsig v0.0.0-20211121163825-841cf5bbc121
-	github.com/LeeZXin/zsf v1.0.82
-	github.com/LeeZXin/zsf-utils v1.0.27
+	github.com/LeeZXin/zsf v1.0.83
+	github.com/LeeZXin/zsf-utils v1.0.28
 	github.com/gin-gonic/gin v1.9.1
 	github.com/gliderlabs/ssh v0.3.5
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
@@ -47,6 +47,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.14.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.3.1 // indirect
