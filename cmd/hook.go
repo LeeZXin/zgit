@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"zgit/modules/api/hookapi"
 	"zgit/pkg/git"
 	"zgit/pkg/hook"
 	"zgit/util"
@@ -71,7 +72,7 @@ func runPreReceive(c *cli.Context) error {
 
 // scanStdinAndDoHttp 处理输入并发送http
 func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
-	infoList := make([]hook.RevInfo, 0)
+	infoList := make([]hookapi.RevInfo, 0)
 	// the environment is set by serv command
 	isWiki, _ := strconv.ParseBool(os.Getenv(git.EnvRepoIsWiki))
 	pusherId := os.Getenv(git.EnvPusherID)
@@ -86,7 +87,7 @@ func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
 		}
 		refName := git.RefName(fields[2])
 		if refName.IsBranch() || refName.IsTag() {
-			infoList = append(infoList, hook.RevInfo{
+			infoList = append(infoList, hookapi.RevInfo{
 				OldCommitId: fields[0],
 				NewCommitId: fields[1],
 				RefName:     fields[2],
@@ -97,7 +98,7 @@ func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
 	defer client.CloseIdleConnections()
 	partitionList := listutil.Partition(infoList, 30)
 	for _, partition := range partitionList {
-		reqVO := hook.OptsReqVO{
+		reqVO := hookapi.OptsReqVO{
 			RevInfoList: partition,
 			IsWiki:      isWiki,
 			PusherId:    pusherId,
@@ -120,8 +121,8 @@ func runHookPostReceive(c *cli.Context) error {
 	return scanStdinAndDoHttp(ctx, hook.ApiPostReceiveUrl)
 }
 
-func doHttp(ctx context.Context, client *http.Client, reqVO hook.OptsReqVO, url string) error {
-	resp := hook.HttpRespVO{}
+func doHttp(ctx context.Context, client *http.Client, reqVO hookapi.OptsReqVO, url string) error {
+	resp := hookapi.HttpRespVO{}
 	err := httputil.Post(ctx, client,
 		fmt.Sprintf("%s/%s", os.Getenv(git.EnvAppUrl), url),
 		nil,

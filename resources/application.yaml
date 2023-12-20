@@ -15,3 +15,7 @@ lfs:
 
 app:
   url: http://127.0.0.1
+  lang: en-US
+
+xorm:
+  dataSourceName: root:root@tcp(127.0.0.1:3306)/hhhh?charset=utf8

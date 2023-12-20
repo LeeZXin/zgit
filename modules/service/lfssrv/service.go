@@ -6,108 +6,12 @@ import (
 	"fmt"
 	"io"
 	"path"
-	"regexp"
 	"time"
 	"zgit/modules/model/lfsmd"
-	"zgit/modules/model/repomd"
-	"zgit/modules/model/usermd"
-	"zgit/pkg/lfs"
+	"zgit/pkg/git/lfs"
 	"zgit/setting"
 	"zgit/util"
 )
-
-var (
-	oidPattern = regexp.MustCompile(`^[a-f\d]{64}$`)
-)
-
-type LockReqDTO struct {
-	Repo     repomd.RepoInfo
-	Operator usermd.UserInfo
-}
-
-type ListLockReqDTO struct {
-	Repo     repomd.RepoInfo
-	Operator usermd.UserInfo
-	Path     string
-	Cursor   string
-	Limit    int
-	RefName  string
-}
-
-type ListLockRespDTO struct {
-	LockList []lfsmd.LfsLock
-	Next     string
-}
-
-type UnlockReqDTO struct {
-	Repo     repomd.RepoInfo
-	LockId   int64
-	Force    bool
-	Operator usermd.UserInfo
-}
-
-type PointerDTO struct {
-	Oid  string
-	Size int64
-}
-
-type VerifyReqDTO struct {
-	PointerDTO
-	Repo     repomd.RepoInfo
-	Operator usermd.UserInfo
-}
-
-type DownloadReqDTO struct {
-	Oid      string
-	Repo     repomd.RepoInfo
-	Operator usermd.UserInfo
-	FromByte int64
-	ToByte   int64
-}
-
-type UploadReqDTO struct {
-	Oid      string
-	Size     int64
-	Repo     repomd.RepoInfo
-	Operator usermd.UserInfo
-	Body     io.Reader
-}
-
-type DownloadRespDTO struct {
-	io.ReadCloser
-	FromByte int64
-	ToByte   int64
-	Length   int64
-}
-
-type BatchReqDTO struct {
-	Repo     repomd.RepoInfo
-	Operator usermd.UserInfo
-	Objects  []PointerDTO
-	IsUpload bool
-	RefName  string
-}
-
-type LinkDTO struct {
-	Href      string
-	Header    map[string]string
-	ExpiresAt *time.Time
-}
-
-// ObjectErrDTO defines the JSON structure returned to the client in case of an error.
-type ObjectErrDTO struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-type ObjectDTO struct {
-	PointerDTO
-	Err error
-}
-
-type BatchRespDTO struct {
-	ObjectList []ObjectDTO
-}
 
 func Lock(ctx context.Context, req LockReqDTO) (lfsmd.LfsLock, error) {
 	// todo 获取仓库
@@ -242,7 +146,7 @@ func Batch(ctx context.Context, req BatchReqDTO) (BatchRespDTO, error) {
 			}
 			if exists && !b {
 				if err = lfsmd.InsertMetaObject(lfsmd.MetaObject{
-					RepoId: req.Repo.Id,
+					RepoId: req.Repo.RepoId,
 					Oid:    object.Oid,
 					Size:   object.Size,
 				}); err != nil {

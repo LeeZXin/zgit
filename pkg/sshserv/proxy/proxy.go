@@ -12,10 +12,12 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"zgit/modules/model/sshkeymd"
 	"zgit/modules/model/usermd"
 	"zgit/modules/service/clustersrv"
 	"zgit/modules/service/gitsrv"
 	"zgit/modules/service/reposrv"
+	"zgit/modules/service/sshkeysrv"
 	"zgit/modules/service/usersrv"
 	"zgit/pkg/sshserv"
 	"zgit/setting"
@@ -32,8 +34,11 @@ func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 	if ctx.User() != setting.GitUser() {
 		return false
 	}
-	keyContent := strings.TrimSpace(string(gossh.MarshalAuthorizedKey(key)))
-	userInfo, b, err := usersrv.GetUserInfoByPublicKey(ctx, keyContent)
+	pubKey, b, err := sshkeysrv.SearchByKeyContent(ctx, key, sshkeymd.UserPubKeyType)
+	if !b || err != nil {
+		return false
+	}
+	userInfo, b, err := usersrv.GetUserInfoByUserId(ctx, pubKey.UserId)
 	if !b || err != nil {
 		return false
 	}
@@ -53,11 +58,11 @@ func sessionHandler(session ssh.Session) {
 
 func handleProxyCommand(ctx context.Context, operator usermd.UserInfo, words []string, session ssh.Session) error {
 	repoPath := strings.TrimPrefix(words[1], "/")
-	repoInfo, b, err := reposrv.GetRepoInfoByRelativePath(ctx, repoPath)
+	repoInfo, b, err := reposrv.GetRepoInfoByPath(ctx, repoPath)
 	if !b || err != nil {
 		return fmt.Errorf("could not find repo: %s", repoPath)
 	}
-	clusterInfo, b, err := clustersrv.GetClusterInfoById(ctx, repoInfo.ClusterId)
+	clusterInfo, b, err := clustersrv.GetClusterInfoById(ctx, repoInfo.NodeId)
 	if !b || err != nil {
 		return fmt.Errorf("could not clusterInfo: %s", repoPath)
 	}
@@ -83,7 +88,7 @@ func handleProxyCommand(ctx context.Context, operator usermd.UserInfo, words []s
 	if err = proxySession.Setenv("ZGIT_PROXY_NAME", proxyName); err != nil {
 		return errors.New("can not transfer proxy name:" + proxyName)
 	}
-	if err = proxySession.Setenv("ZGIT_LOGIN_USER", operator.Id); err != nil {
+	if err = proxySession.Setenv("ZGIT_LOGIN_USER", operator.UserId); err != nil {
 		return errors.New("can not transfer login user")
 	}
 	stdout, err := proxySession.StdoutPipe()

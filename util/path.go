@@ -22,20 +22,20 @@ func IsExist(path string) (bool, error) {
 	return false, err
 }
 
-func joinRepoPath(v ...string) string {
-	return filepath.Join(setting.RepoDir(), filepath.Join(v...)+".git")
+func JoinRelativeRepoPath(corpId, nodeId, repoName string) string {
+	return filepath.Join(corpId, nodeId, repoName) + ".git"
 }
 
-func JoinRepoPath(companyName, clusterId, repoName string) string {
-	return joinRepoPath(companyName, clusterId, repoName)
+func JoinRelativeWikiPath(corpId, nodeId, repoName string) string {
+	return filepath.Join(corpId, nodeId, repoName) + ".wiki"
 }
 
-func joinWikiPath(v ...string) string {
-	return filepath.Join(setting.RepoDir(), filepath.Join(v...)+".wiki")
+func JoinAbsRepoPath(corpId, nodeId, repoName string) string {
+	return filepath.Join(setting.RepoDir(), JoinRelativeRepoPath(corpId, nodeId, repoName))
 }
 
-func JoinWikiPath(companyName, clusterId, wikiName string) string {
-	return joinWikiPath(companyName, clusterId, wikiName)
+func JoinAbsWikiPath(corpId, nodeId, wikiName string) string {
+	return filepath.Join(setting.RepoDir(), JoinRelativeWikiPath(corpId, nodeId, wikiName))
 }
 
 // RemoveAll removes the named file or (empty) directory with at most 5 attempts.

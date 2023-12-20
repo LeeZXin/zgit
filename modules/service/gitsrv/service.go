@@ -18,26 +18,11 @@ import (
 	"zgit/modules/model/usermd"
 	"zgit/pkg/git"
 	"zgit/pkg/git/command"
+	"zgit/pkg/git/lfs"
 	"zgit/pkg/git/process"
-	"zgit/pkg/lfs"
 	"zgit/pkg/perm"
 	"zgit/setting"
 	"zgit/util"
-)
-
-const (
-	lfsAuthenticateVerb = "git-lfs-authenticate"
-)
-
-var (
-	hiWords = "Hi there! You've successfully authenticated with the deploy key named %v, but zgit does not provide shell access."
-
-	allowedCommands = map[string]perm.AccessMode{
-		"git-upload-pack":    perm.AccessModeRead,
-		"git-upload-archive": perm.AccessModeRead,
-		"git-receive-pack":   perm.AccessModeWrite,
-		lfsAuthenticateVerb:  perm.AccessModeNone,
-	}
 )
 
 func HandleSshCommand(ctx context.Context, cmd string, keyUser usermd.UserInfo, session ssh.Session, after func(context.Context, usermd.UserInfo, []string, ssh.Session) error) error {
@@ -107,7 +92,7 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 			},
 			RepoId: results.RepoId,
 			Op:     lfsVerb,
-			UserId: operator.Id,
+			UserId: operator.UserId,
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		// Sign and get the complete encoded token as a string using the secret
@@ -150,7 +135,7 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 			git.EnvRepoIsWiki, strconv.FormatBool(results.IsWiki),
 			git.EnvRepoPath, filepath.Join(setting.RepoDir(), repoPath),
 			git.EnvRepoID, results.RepoId,
-			git.EnvPusherID, operator.Id,
+			git.EnvPusherID, operator.Account,
 			git.EnvAppUrl, setting.AppUrl(),
 		)...,
 	)
@@ -160,10 +145,4 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 
 func checkAccessMode(ctx context.Context, user usermd.UserInfo, repo util.RelativeRepoPath, accessMode perm.AccessMode, verbs ...string) (ServCommandResults, bool, error) {
 	return ServCommandResults{}, true, nil
-}
-
-type ServCommandResults struct {
-	IsWiki    bool
-	RepoId    string
-	ClusterId string
 }

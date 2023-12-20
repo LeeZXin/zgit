@@ -8,8 +8,10 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"zgit/modules/model/sshkeymd"
 	"zgit/modules/model/usermd"
 	"zgit/modules/service/gitsrv"
+	"zgit/modules/service/sshkeysrv"
 	"zgit/modules/service/usersrv"
 	"zgit/setting"
 	"zgit/util"
@@ -32,24 +34,23 @@ func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 	if ctx.User() != setting.GitUser() {
 		return false
 	}
-	keyContent := strings.TrimSpace(string(gossh.MarshalAuthorizedKey(key)))
 	if mode == standaloneMode {
-		userInfo, b, err := usersrv.GetUserInfoByPublicKey(ctx, keyContent)
+		pubKey, b, err := sshkeysrv.SearchByKeyContent(ctx, key, sshkeymd.UserPubKeyType)
+		if !b || err != nil {
+			return false
+		}
+		userInfo, b, err := usersrv.GetUserInfoByUserId(ctx, pubKey.UserId)
 		if !b || err != nil {
 			return false
 		}
 		ctx.SetValue(ZgitUserId, userInfo)
 	} else {
-		b, err := existNodeInfoByPublicKey(keyContent)
+		_, b, err := sshkeysrv.SearchByKeyContent(ctx, key, sshkeymd.ProxyKeyType)
 		if !b || err != nil {
 			return false
 		}
 	}
 	return true
-}
-
-func existNodeInfoByPublicKey(pubKey string) (bool, error) {
-	return true, nil
 }
 
 func sessionHandler(session ssh.Session) {

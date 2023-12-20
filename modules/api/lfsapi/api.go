@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/LeeZXin/zsf-utils/listutil"
 	"github.com/LeeZXin/zsf/http/httpserver"
+	"github.com/LeeZXin/zsf/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"net/http"
@@ -19,7 +20,7 @@ import (
 	"zgit/modules/service/lfssrv"
 	"zgit/modules/service/reposrv"
 	"zgit/modules/service/usersrv"
-	"zgit/pkg/lfs"
+	"zgit/pkg/git/lfs"
 	"zgit/setting"
 )
 
@@ -32,121 +33,10 @@ var (
 	rangeHeaderRegexp = regexp.MustCompile(`bytes=(\d+)\-(\d*).*`)
 )
 
-type BatchReqVO struct {
-	Operation string `json:"operation"`
-	// 没使用到
-	Transfers []string    `json:"transfers,omitempty"`
-	Ref       ReferenceVO `json:"ref,omitempty"`
-	Objects   []PointerVO `json:"objects"`
-	HashAlgo  string      `json:"hash_algo"`
-}
-
-// ReferenceVO contains a git reference.
-// https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md#ref-property
-type ReferenceVO struct {
-	Name string `json:"name"`
-}
-
-// PointerVO contains LFS pointer data
-type PointerVO struct {
-	Oid  string `json:"oid"`
-	Size int64  `json:"size"`
-}
-
-// BatchRespVO contains multiple object metadata Representation structures
-// for use with the batch API.
-// https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md#successful-responses
-type BatchRespVO struct {
-	Transfer string         `json:"transfer,omitempty"`
-	Objects  []ObjectRespVO `json:"objects"`
-}
-
-// ObjectRespVO is object metadata as seen by clients of the LFS server.
-type ObjectRespVO struct {
-	PointerVO
-	Actions map[string]LinkVO `json:"actions,omitempty"`
-	Error   *ObjectErrVO      `json:"error,omitempty"`
-}
-
-// LinkVO provides a structure with information about how to access a object.
-type LinkVO struct {
-	Href      string            `json:"href"`
-	Header    map[string]string `json:"header,omitempty"`
-	ExpiresAt *time.Time        `json:"expires_at,omitempty"`
-}
-
-// ObjectErrVO defines the JSON structure returned to the client in case of an error.
-type ObjectErrVO struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-// LockVO represent a lock
-// for use with the locks API.
-type LockVO struct {
-	Id       string       `json:"id"`
-	Path     string       `json:"path"`
-	LockedAt time.Time    `json:"locked_at"`
-	Owner    *LockOwnerVO `json:"owner"`
-}
-
-// LockOwnerVO represent a lock owner
-// for use with the locks API.
-type LockOwnerVO struct {
-	Name string `json:"name"`
-}
-
-type ErrVO struct {
-	Message       string `json:"message"`
-	Documentation string `json:"documentation_url,omitempty"`
-	RequestID     string `json:"request_id,omitempty"`
-}
-
-type PostLockReqVO struct {
-	Path string      `json:"path"`
-	Ref  ReferenceVO `json:"ref"`
-}
-
-type PostLockRespVO struct {
-	Lock LockVO `json:"lock"`
-}
-
-type ListLockReqVO struct {
-	Path    string `json:"path" form:"path"`
-	Id      string `json:"id" form:"id"`
-	Cursor  string `json:"cursor" form:"cursor"`
-	Limit   int    `json:"limit" form:"limit"`
-	RefSpec string `json:"refspec" form:"refspec"`
-}
-
-type ListLockVerifyReqVO struct {
-	Cursor string      `json:"cursor"`
-	Limit  int         `json:"limit"`
-	Ref    ReferenceVO `json:"ref"`
-}
-
-type ListLockRespVO struct {
-	Locks []LockVO `json:"locks"`
-	Next  string   `json:"next_cursor,omitempty"`
-}
-
-type UnlockReqVO struct {
-	Force bool `json:"force"`
-}
-
-type UnlockRespVO struct {
-	Lock LockVO `json:"lock"`
-}
-
-type ListLockVerifyRespVO struct {
-	Ours   []LockVO `json:"ours"`
-	Theirs []LockVO `json:"theirs"`
-	Next   string   `json:"next_cursor,omitempty"`
-}
-
-func InitLfsHttpApi() {
+func InitApi() {
+	// 注册lfs api
 	httpserver.AppendRegisterRouterFunc(func(e *gin.Engine) {
-		infoLfs := e.Group(":companyId/:clusterId/:repoName/info/lfs", packRepoPath)
+		infoLfs := e.Group(":corpId/:clusterId/:repoName/info/lfs", packRepoPath)
 		{
 			infoLfs.POST("/objects/batch", checkMediaType, batch)
 			infoLfs.PUT("/objects/:oid/:size", upload)
@@ -164,11 +54,13 @@ func InitLfsHttpApi() {
 	})
 }
 
+// packRepoPath
 func packRepoPath(c *gin.Context) {
-	companyId := c.Param("companyId")
+	logger.Logger.Info(c.Request.URL.Path)
+	corpId := c.Param("corpId")
 	clusterId := c.Param("clusterId")
 	repoName := c.Param("repoName")
-	repoPath := filepath.Join(companyId, clusterId, repoName)
+	repoPath := filepath.Join(corpId, clusterId, repoName)
 	authorization := c.GetHeader("Authorization")
 	if authorization == "" {
 		c.JSON(http.StatusBadRequest, ErrVO{
@@ -199,7 +91,7 @@ func packRepoPath(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	repo, b, err := reposrv.GetRepoInfoByRelativePath(ctx, repoPath)
+	repo, b, err := reposrv.GetRepoInfoByPath(ctx, repoPath)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrVO{
 			Message: "internal error",
@@ -299,7 +191,7 @@ func batch(c *gin.Context) {
 		"Authorization": authorization,
 	}
 	var resp BatchRespVO
-	repoPath := getRepo(c).RelativePath
+	repoPath := getRepo(c).Path
 	resp.Objects, _ = listutil.Map(respDTO.ObjectList, func(t lfssrv.ObjectDTO) (ObjectRespVO, error) {
 		if t.Err == nil {
 			var actions map[string]LinkVO
@@ -333,7 +225,7 @@ func batch(c *gin.Context) {
 			return ObjectRespVO{
 				Error: &ObjectErrVO{
 					Code:    http.StatusUnprocessableEntity,
-					Message: err.Error(),
+					Message: t.Err.Error(),
 				},
 			}, nil
 		}
@@ -460,13 +352,13 @@ func listLockVerify(c *gin.Context) {
 	}
 	voList := listResp.LockList
 	ours, _ := listutil.Filter(voList, func(lock lfsmd.LfsLock) (bool, error) {
-		return lock.OwnerId == operator.Id, nil
+		return lock.OwnerId == operator.Account, nil
 	})
 	oursRet, _ := listutil.Map(ours, func(lock lfsmd.LfsLock) (LockVO, error) {
 		return model2LockVO(lock, operator), nil
 	})
 	theirs, _ := listutil.Filter(voList, func(lock lfsmd.LfsLock) (bool, error) {
-		return lock.OwnerId != operator.Id, nil
+		return lock.OwnerId != operator.Account, nil
 	})
 	theirsRet, _ := listutil.Map(theirs, func(lock lfsmd.LfsLock) (LockVO, error) {
 		return model2LockVO(lock, operator), nil

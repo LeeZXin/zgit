@@ -68,6 +68,9 @@ func InitRepository(ctx context.Context, opts InitRepoOpts) error {
 	if err := initEmptyRepository(ctx, opts.RepoPath, true); err != nil {
 		return err
 	}
+	if opts.DefaultBranch == "" {
+		opts.DefaultBranch = setting.DefaultBranch()
+	}
 	if opts.CreateReadme || opts.GitIgnoreName != "" {
 		tmpDir, err := os.MkdirTemp(setting.TempDir(), "zgit-"+opts.RepoName)
 		if err != nil {
@@ -78,11 +81,7 @@ func InitRepository(ctx context.Context, opts InitRepoOpts) error {
 			return err
 		}
 	} else {
-		branch := opts.DefaultBranch
-		if branch == "" {
-			branch = setting.DefaultBranch()
-		}
-		SetDefaultBranch(ctx, opts.RepoPath, branch)
+		SetDefaultBranch(ctx, opts.RepoPath, opts.DefaultBranch)
 	}
 	return InitRepoHook(opts.RepoPath)
 }
@@ -154,9 +153,6 @@ func commitAndPushRepository(ctx context.Context, opts CommitAndPushOpts) error 
 	_, err = commitCmd.Run(ctx, command.WithDir(opts.RepoPath), command.WithEnv(env))
 	if err != nil {
 		return fmt.Errorf("git commit failed repo:%s err: %v", opts.RepoPath, err)
-	}
-	if opts.Branch == "" {
-		opts.Branch = setting.DefaultBranch()
 	}
 	_, err = command.NewCommand("push", "origin", opts.Branch).
 		Run(ctx, command.WithDir(opts.RepoPath), command.WithEnv(util.JoinFields(EnvIsInternal, "true")))
