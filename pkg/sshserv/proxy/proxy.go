@@ -12,9 +12,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"zgit/modules/model/clustermd"
 	"zgit/modules/model/sshkeymd"
 	"zgit/modules/model/usermd"
-	"zgit/modules/service/clustersrv"
 	"zgit/modules/service/gitsrv"
 	"zgit/modules/service/reposrv"
 	"zgit/modules/service/sshkeysrv"
@@ -62,12 +62,12 @@ func handleProxyCommand(ctx context.Context, operator usermd.UserInfo, words []s
 	if !b || err != nil {
 		return fmt.Errorf("could not find repo: %s", repoPath)
 	}
-	clusterInfo, b, err := clustersrv.GetClusterInfoById(ctx, repoInfo.NodeId)
+	nodeInfo, b, err := clustermd.GetByNodeId(ctx, repoInfo.NodeId)
 	if !b || err != nil {
-		return fmt.Errorf("could not clusterInfo: %s", repoPath)
+		return fmt.Errorf("could not nodeInfo: %s", repoPath)
 	}
 	// 建立SSH连接
-	client, err := gossh.Dial("tcp", fmt.Sprintf("%s:%d", clusterInfo.Host, clusterInfo.Port), clientConfig)
+	client, err := gossh.Dial("tcp", fmt.Sprintf("%s:%d", nodeInfo.Host, nodeInfo.Port), clientConfig)
 	if err != nil {
 		return errors.New("connect to proxy failed")
 	}
