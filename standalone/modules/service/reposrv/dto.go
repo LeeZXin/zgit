@@ -89,6 +89,33 @@ func (r *TreeRepoReqDTO) IsValid() error {
 	return nil
 }
 
+type EntriesRepoReqDTO struct {
+	RepoId   string
+	RefName  string
+	Dir      string
+	Offset   int
+	Operator usermd.UserInfo
+}
+
+func (r *EntriesRepoReqDTO) IsValid() error {
+	if r.Operator.Account == "" {
+		return util.InvalidArgsError()
+	}
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+		return util.InvalidArgsError()
+	}
+	if r.RefName == "" {
+		return util.InvalidArgsError()
+	}
+	if strings.HasSuffix(r.Dir, "/") {
+		return util.InvalidArgsError()
+	}
+	if r.Offset < 0 {
+		return util.InvalidArgsError()
+	}
+	return nil
+}
+
 type CommitDTO struct {
 	Author        git.User
 	Committer     git.User
@@ -109,12 +136,14 @@ type FileDTO struct {
 type TreeDTO struct {
 	Files   []FileDTO
 	Limit   int
+	Offset  int
 	HasMore bool
 }
 
 type TreeRepoRespDTO struct {
 	IsEmpty      bool
 	ReadmeText   string
+	HasReadme    bool
 	RecentCommit CommitDTO
 	Tree         TreeDTO
 }

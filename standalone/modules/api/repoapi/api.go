@@ -25,7 +25,9 @@ func InitApi() {
 			// 展示仓库列表
 			group.POST("/list")
 			// 展示仓库主页
-			group.GET("/tree", tree)
+			group.POST("/tree", tree)
+			// 展示更多文件列表
+			group.POST("/entries", entries)
 
 		}
 	})
@@ -59,10 +61,34 @@ func tree(c *gin.Context) {
 			ReadmeText:   repoRespDTO.ReadmeText,
 			RecentCommit: commitDto2Vo(repoRespDTO.RecentCommit),
 			Tree: TreeVO{
+				Offset:  repoRespDTO.Tree.Offset,
 				Files:   fileDto2Vo(repoRespDTO.Tree.Files),
 				Limit:   repoRespDTO.Tree.Limit,
 				HasMore: repoRespDTO.Tree.HasMore,
 			},
+		})
+	}
+}
+
+func entries(c *gin.Context) {
+	var req EntriesRepoReqVO
+	if util.ShouldBindJSON(&req, c) {
+		repoRespDTO, err := reposrv.EntriesRepo(c.Request.Context(), reposrv.EntriesRepoReqDTO{
+			RepoId:   req.RepoId,
+			RefName:  req.RefName,
+			Dir:      req.Dir,
+			Offset:   req.Offset,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		c.JSON(http.StatusOK, TreeVO{
+			Offset:  repoRespDTO.Offset,
+			Files:   fileDto2Vo(repoRespDTO.Files),
+			Limit:   repoRespDTO.Limit,
+			HasMore: repoRespDTO.HasMore,
 		})
 	}
 }

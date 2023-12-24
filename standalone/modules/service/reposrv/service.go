@@ -35,6 +35,40 @@ func GetRepoInfoByPath(ctx context.Context, path string) (repomd.RepoInfo, bool,
 	return repo.ToRepoInfo(), b, nil
 }
 
+func EntriesRepo(ctx context.Context, reqDTO EntriesRepoReqDTO) (TreeDTO, error) {
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	repo, b, err := repomd.GetByRepoId(ctx, reqDTO.RepoId)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return TreeDTO{}, util.InternalError()
+	}
+	if !b {
+		return TreeDTO{}, util.InvalidArgsError()
+	}
+	exists, err := projectsrv.ProjectUserExists(ctx, repo.ProjectId, reqDTO.Operator.Account)
+	if err != nil {
+		return TreeDTO{}, err
+	}
+	if !exists {
+		return TreeDTO{}, util.UnauthorizedError()
+	}
+	// 空仓库 需要推代码
+	if repo.IsEmpty {
+		return TreeDTO{}, nil
+	}
+	if reqDTO.Dir == "" {
+		reqDTO.Dir = "."
+	}
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
+	commits, err := git.LsTreeCommit(ctx, absPath, reqDTO.RefName, reqDTO.Dir, reqDTO.Offset, LsTreeLimit)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return TreeDTO{}, util.InternalError()
+	}
+	return LsRet2TreeDTO(commits, reqDTO.Offset, LsTreeLimit), nil
+}
+
 func TreeRepo(ctx context.Context, reqDTO TreeRepoReqDTO) (TreeRepoRespDTO, error) {
 	if err := reqDTO.IsValid(); err != nil {
 		return TreeRepoRespDTO{}, err
@@ -74,18 +108,19 @@ func TreeRepo(ctx context.Context, reqDTO TreeRepoReqDTO) (TreeRepoRespDTO, erro
 		logger.Logger.WithContext(ctx).Error(err)
 		return TreeRepoRespDTO{}, util.InternalError()
 	}
-	readme, b, err := git.GetFileContentByRef(ctx, absPath, reqDTO.RefName, filepath.Join(reqDTO.Dir, "readme.md"))
+	readme, hasReadme, err := git.GetFileContentByRef(ctx, absPath, reqDTO.RefName, filepath.Join(reqDTO.Dir, "readme.md"))
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
 	}
-	if err == nil && !b {
-		readme, b, err = git.GetFileContentByRef(ctx, absPath, reqDTO.RefName, filepath.Join(reqDTO.Dir, "README.md"))
+	if err == nil && !hasReadme {
+		readme, hasReadme, err = git.GetFileContentByRef(ctx, absPath, reqDTO.RefName, filepath.Join(reqDTO.Dir, "README.md"))
 		if err != nil {
 			logger.Logger.WithContext(ctx).Error(err)
 		}
 	}
 	return TreeRepoRespDTO{
 		ReadmeText: readme,
+		HasReadme:  hasReadme,
 		RecentCommit: CommitDTO{
 			Author:        commit.Author,
 			Committer:     commit.Committer,
@@ -95,11 +130,11 @@ func TreeRepo(ctx context.Context, reqDTO TreeRepoReqDTO) (TreeRepoRespDTO, erro
 			CommitId:      commit.Id,
 			ShortId:       util.LongCommitId2ShortId(commit.Id),
 		},
-		Tree: LsRet2TreeDTO(commits, LsTreeLimit),
+		Tree: LsRet2TreeDTO(commits, 0, LsTreeLimit),
 	}, nil
 }
 
-func LsRet2TreeDTO(commits []git.FileCommit, limit int) TreeDTO {
+func LsRet2TreeDTO(commits []git.FileCommit, offset, limit int) TreeDTO {
 	files, _ := listutil.Map(commits, func(t git.FileCommit) (FileDTO, error) {
 		ret := FileDTO{
 			Mode:    t.Mode.Readable(),
@@ -122,6 +157,7 @@ func LsRet2TreeDTO(commits []git.FileCommit, limit int) TreeDTO {
 	return TreeDTO{
 		Files:   files,
 		Limit:   limit,
+		Offset:  offset,
 		HasMore: len(commits) == limit,
 	}
 }

@@ -30,6 +30,13 @@ type TreeRepoReqVO struct {
 	Dir     string `json:"dir"`
 }
 
+type EntriesRepoReqVO struct {
+	RepoId  string `json:"repoId"`
+	RefName string `json:"refName"`
+	Dir     string `json:"dir"`
+	Offset  int    `json:"offset"`
+}
+
 type CommitVO struct {
 	Author        git.User
 	Committer     git.User
@@ -50,6 +57,7 @@ type FileVO struct {
 type TreeVO struct {
 	Files   []FileVO
 	Limit   int
+	Offset  int
 	HasMore bool
 }
 
