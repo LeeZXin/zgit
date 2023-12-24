@@ -352,13 +352,13 @@ func listLockVerify(c *gin.Context) {
 	}
 	voList := listResp.LockList
 	ours, _ := listutil.Filter(voList, func(lock lfsmd.LfsLock) (bool, error) {
-		return lock.OwnerId == operator.Account, nil
+		return lock.OwnerAccount == operator.Account, nil
 	})
 	oursRet, _ := listutil.Map(ours, func(lock lfsmd.LfsLock) (LockVO, error) {
 		return model2LockVO(lock, operator), nil
 	})
 	theirs, _ := listutil.Filter(voList, func(lock lfsmd.LfsLock) (bool, error) {
-		return lock.OwnerId != operator.Account, nil
+		return lock.OwnerAccount != operator.Account, nil
 	})
 	theirsRet, _ := listutil.Map(theirs, func(lock lfsmd.LfsLock) (LockVO, error) {
 		return model2LockVO(lock, operator), nil

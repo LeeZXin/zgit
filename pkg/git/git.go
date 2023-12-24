@@ -55,7 +55,6 @@ func (m FileMode) Readable() string {
 }
 
 const (
-	EnvRepoID     = "ZGIT_REPO_ID"
 	EnvRepoPath   = "ZGIT_REPO_PATH"
 	EnvRepoIsWiki = "ZGIT_REPO_IS_WIKI"
 	EnvPusherID   = "ZGIT_PUSHER_ID"

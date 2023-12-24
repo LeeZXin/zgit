@@ -86,9 +86,9 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 				ExpiresAt: jwt.NewNumericDate(now.Add(setting.LfsJwtAuthExpiry())),
 				NotBefore: jwt.NewNumericDate(now),
 			},
-			RepoId:  results.RepoId,
-			Op:      lfsVerb,
-			Account: operator.Account,
+			RepoPath: results.RepoPath,
+			Op:       lfsVerb,
+			Account:  operator.Account,
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		// Sign and get the complete encoded token as a string using the secret
@@ -129,8 +129,7 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 	gitCmd.Env = append(gitCmd.Env,
 		util.JoinFields(
 			git.EnvRepoIsWiki, strconv.FormatBool(results.IsWiki),
-			git.EnvRepoPath, filepath.Join(setting.RepoDir(), repoPath),
-			git.EnvRepoID, results.RepoId,
+			git.EnvRepoPath, repoPath,
 			git.EnvPusherID, operator.Account,
 			git.EnvAppUrl, setting.AppUrl(),
 		)...,

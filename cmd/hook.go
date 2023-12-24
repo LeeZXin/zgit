@@ -53,9 +53,8 @@ func runPreReceive(c *cli.Context) error {
 	defer cancel()
 	fmt.Println("Welcome to ZGIT")
 	// 获取仓库大小限制
-	repoId := os.Getenv(git.EnvRepoID)
 	repoPath := os.Getenv(git.EnvRepoPath)
-	limitSize, err := getRepoLimitSize(repoId)
+	limitSize, err := getRepoLimitSize(repoPath)
 	if err != nil {
 		return err
 	}
@@ -76,8 +75,8 @@ func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
 	// the environment is set by serv command
 	isWiki, _ := strconv.ParseBool(os.Getenv(git.EnvRepoIsWiki))
 	pusherId := os.Getenv(git.EnvPusherID)
-	repoId := os.Getenv(git.EnvRepoID)
 	prId := os.Getenv(git.EnvPRID)
+	repoPath := os.Getenv(git.EnvRepoPath)
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := strings.TrimSpace(string(scanner.Bytes()))
@@ -102,8 +101,8 @@ func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
 			RevInfoList: partition,
 			IsWiki:      isWiki,
 			PusherId:    pusherId,
-			RepoId:      repoId,
 			PrId:        prId,
+			RepoPath:    repoPath,
 		}
 		if err := doHttp(ctx, client, reqVO, httpUrl); err != nil {
 			return fmt.Errorf("do internal api failed: %v", err)
@@ -149,6 +148,6 @@ func newHttpClient() *http.Client {
 	}
 }
 
-func getRepoLimitSize(repoId string) (int64, error) {
+func getRepoLimitSize(repoPath string) (int64, error) {
 	return 1 * util.Gib, nil
 }

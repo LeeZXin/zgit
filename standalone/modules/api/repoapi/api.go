@@ -3,6 +3,7 @@ package repoapi
 import (
 	"github.com/LeeZXin/zsf-utils/ginutil"
 	"github.com/LeeZXin/zsf-utils/listutil"
+	"github.com/LeeZXin/zsf-utils/timeutil"
 	"github.com/LeeZXin/zsf/http/httpserver"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -23,11 +24,13 @@ func InitApi() {
 			// 删除仓库
 			group.POST("/delete", deleteRepo)
 			// 展示仓库列表
-			group.POST("/list")
+			group.POST("/list", listRepo)
 			// 展示仓库主页
-			group.POST("/tree", tree)
+			group.POST("/tree", treeRepo)
 			// 展示更多文件列表
-			group.POST("/entries", entries)
+			group.POST("/entries", entriesRepo)
+			// 展示单个文件内容
+			group.POST("/catFile", catFile)
 
 		}
 	})
@@ -42,11 +45,12 @@ func allGitIgnoreTemplateList(c *gin.Context) {
 	})
 }
 
-func tree(c *gin.Context) {
+// treeRepo 代码详情页
+func treeRepo(c *gin.Context) {
 	var req TreeRepoReqVO
 	if util.ShouldBindJSON(&req, c) {
 		repoRespDTO, err := reposrv.TreeRepo(c.Request.Context(), reposrv.TreeRepoReqDTO{
-			RepoId:   req.RepoId,
+			RepoPath: req.RepoPath,
 			RefName:  req.RefName,
 			Dir:      req.Dir,
 			Operator: apicommon.MustGetLoginUser(c),
@@ -70,11 +74,12 @@ func tree(c *gin.Context) {
 	}
 }
 
-func entries(c *gin.Context) {
+// entriesRepo 展示文件列表
+func entriesRepo(c *gin.Context) {
 	var req EntriesRepoReqVO
 	if util.ShouldBindJSON(&req, c) {
 		repoRespDTO, err := reposrv.EntriesRepo(c.Request.Context(), reposrv.EntriesRepoReqDTO{
-			RepoId:   req.RepoId,
+			RepoPath: req.RepoPath,
 			RefName:  req.RefName,
 			Dir:      req.Dir,
 			Offset:   req.Offset,
@@ -143,12 +148,73 @@ func deleteRepo(c *gin.Context) {
 	if util.ShouldBindJSON(&req, c) {
 		err := reposrv.DeleteRepo(c.Request.Context(), reposrv.DeleteRepoReqDTO{
 			Operator: apicommon.MustGetLoginUser(c),
-			RepoId:   req.RepoId,
+			RepoPath: req.RepoPath,
 		})
 		if err != nil {
 			util.HandleApiErr(err, c)
 			return
 		}
 		c.JSON(http.StatusOK, ginutil.DefaultSuccessResp)
+	}
+}
+
+func listRepo(c *gin.Context) {
+	var req ListRepoReqVO
+	if util.ShouldBindJSON(&req, c) {
+		respDTO, err := reposrv.ListRepo(c.Request.Context(), reposrv.ListRepoReqDTO{
+			Offset:     req.Offset,
+			Limit:      req.Limit,
+			SearchName: req.SearchName,
+			ProjectId:  req.ProjectId,
+			Operator:   apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		repoList, _ := listutil.Map(respDTO.RepoList, func(t repomd.Repo) (RepoVO, error) {
+			return RepoVO{
+				Name:      t.Name,
+				Path:      t.Path,
+				Author:    t.Author,
+				ProjectId: t.ProjectId,
+				RepoType:  repomd.RepoType(t.RepoType).String(),
+				IsEmpty:   t.IsEmpty,
+				TotalSize: t.TotalSize,
+				WikiSize:  t.WikiSize,
+				GitSize:   t.GitSize,
+				LfsSize:   t.LfsSize,
+				Created:   t.Created.Format(timeutil.DefaultTimeFormat),
+			}, nil
+		})
+		c.JSON(http.StatusOK, ListRepoRespVO{
+			BaseResp:   ginutil.DefaultSuccessResp,
+			RepoList:   repoList,
+			TotalCount: respDTO.TotalCount,
+			Cursor:     respDTO.Cursor,
+			Limit:      respDTO.Limit,
+		})
+	}
+}
+
+func catFile(c *gin.Context) {
+	var req CatFileReqVO
+	if util.ShouldBindJSON(&req, c) {
+		fileMode, content, err := reposrv.CatFile(c.Request.Context(), reposrv.CatFileReqDTO{
+			RepoPath: req.RepoPath,
+			RefName:  req.RefName,
+			Dir:      req.Dir,
+			FileName: req.FileName,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		c.JSON(http.StatusOK, CatFileRespVO{
+			BaseResp: ginutil.DefaultSuccessResp,
+			Mode:     fileMode.Readable(),
+			Content:  content,
+		})
 	}
 }

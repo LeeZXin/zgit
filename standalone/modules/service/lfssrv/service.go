@@ -19,11 +19,11 @@ func Lock(ctx context.Context, req LockReqDTO) (lfsmd.LfsLock, error) {
 	// todo 检查权限
 	// todo 添加锁
 	return lfsmd.LfsLock{
-		Id:      1,
-		RepoId:  "aa",
-		OwnerId: "1",
-		Path:    "xx",
-		Created: time.Now(),
+		Id:           1,
+		RepoPath:     "aa",
+		OwnerAccount: "1",
+		Path:         "xx",
+		Created:      time.Now(),
 	}, nil
 }
 
@@ -40,11 +40,11 @@ func ListLock(ctx context.Context, req ListLockReqDTO) (ListLockRespDTO, error) 
 
 func Unlock(ctx context.Context, req UnlockReqDTO) (lfsmd.LfsLock, error) {
 	return lfsmd.LfsLock{
-		Id:      1,
-		RepoId:  "aa",
-		OwnerId: "1",
-		Path:    "xx",
-		Created: time.Now(),
+		Id:           1,
+		RepoPath:     "aa",
+		OwnerAccount: "1",
+		Path:         "xx",
+		Created:      time.Now(),
 	}, nil
 }
 
@@ -146,9 +146,9 @@ func Batch(ctx context.Context, req BatchReqDTO) (BatchRespDTO, error) {
 			}
 			if exists && !b {
 				if err = lfsmd.InsertMetaObject(lfsmd.MetaObject{
-					RepoId: req.Repo.RepoId,
-					Oid:    object.Oid,
-					Size:   object.Size,
+					RepoPath: req.Repo.Path,
+					Oid:      object.Oid,
+					Size:     object.Size,
 				}); err != nil {
 					return BatchRespDTO{}, fmt.Errorf("insert %s err", object.Oid)
 				}

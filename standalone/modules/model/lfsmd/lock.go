@@ -5,16 +5,20 @@ import (
 	"time"
 )
 
+const (
+	LfsLockTableName = "lfs_lock"
+)
+
 type LfsLock struct {
-	Id      int64     `json:"id" xorm:"pk autoincr"`
-	RepoId  string    `json:"repoId"`
-	OwnerId string    `json:"ownerId"`
-	Path    string    `json:"path" xorm:"TEXT"`
-	Created time.Time `json:"created" xorm:"created"`
+	Id           int64     `json:"id" xorm:"pk autoincr"`
+	RepoPath     string    `json:"repoPath"`
+	OwnerAccount string    `json:"ownerAccount"`
+	Path         string    `json:"path" xorm:"TEXT"`
+	Created      time.Time `json:"created" xorm:"created"`
 }
 
 func (l LfsLock) TableName() string {
-	return "z_lfs_lock"
+	return LfsLockTableName
 }
 
 func InsertLock(ctx context.Context, lock *LfsLock) error {

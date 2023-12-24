@@ -21,6 +21,6 @@ var (
 
 type ServCommandResults struct {
 	IsWiki    bool
-	RepoId    string
+	RepoPath  string
 	ClusterId string
 }

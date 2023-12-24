@@ -4,9 +4,9 @@ import "github.com/golang-jwt/jwt/v5"
 
 // Claims is a JWT Token Claims
 type Claims struct {
-	RepoId  string
-	Op      string
-	Account string
+	RepoPath string
+	Op       string
+	Account  string
 	jwt.RegisteredClaims
 }
 

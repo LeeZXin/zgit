@@ -46,13 +46,8 @@ func (r *InitRepoReqDTO) IsValid() error {
 	return nil
 }
 
-type InitRepoRespDTO struct {
-	Path string
-	Size int64
-}
-
 type DeleteRepoReqDTO struct {
-	RepoId   string
+	RepoPath string
 	Operator usermd.UserInfo
 }
 
@@ -60,14 +55,14 @@ func (r *DeleteRepoReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if len(r.RepoPath) > 128 || len(r.RepoPath) == 0 {
 		return util.InvalidArgsError()
 	}
 	return nil
 }
 
 type TreeRepoReqDTO struct {
-	RepoId   string
+	RepoPath string
 	RefName  string
 	Dir      string
 	Operator usermd.UserInfo
@@ -77,10 +72,40 @@ func (r *TreeRepoReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if len(r.RepoPath) > 128 || len(r.RepoPath) == 0 {
 		return util.InvalidArgsError()
 	}
-	if r.RefName == "" {
+	if len(r.RefName) > 128 || len(r.RefName) == 0 {
+		return util.InvalidArgsError()
+	}
+	if strings.HasSuffix(r.Dir, "/") {
+		return util.InvalidArgsError()
+	}
+	return nil
+}
+
+type CatFileReqDTO struct {
+	RepoPath string
+	RefName  string
+	Dir      string
+	FileName string
+	Operator usermd.UserInfo
+}
+
+func (r *CatFileReqDTO) IsValid() error {
+	if r.Operator.Account == "" {
+		return util.InvalidArgsError()
+	}
+	if len(r.RepoPath) > 128 || len(r.RepoPath) == 0 {
+		return util.InvalidArgsError()
+	}
+	if len(r.RefName) > 128 || len(r.RefName) == 0 {
+		return util.InvalidArgsError()
+	}
+	if len(r.Dir) > 128 || len(r.Dir) == 0 {
+		return util.InvalidArgsError()
+	}
+	if len(r.FileName) > 128 || len(r.FileName) == 0 {
 		return util.InvalidArgsError()
 	}
 	if strings.HasSuffix(r.Dir, "/") {
@@ -90,7 +115,7 @@ func (r *TreeRepoReqDTO) IsValid() error {
 }
 
 type EntriesRepoReqDTO struct {
-	RepoId   string
+	RepoPath string
 	RefName  string
 	Dir      string
 	Offset   int
@@ -101,7 +126,7 @@ func (r *EntriesRepoReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if len(r.RepoPath) > 128 || len(r.RepoPath) == 0 {
 		return util.InvalidArgsError()
 	}
 	if r.RefName == "" {
@@ -114,6 +139,40 @@ func (r *EntriesRepoReqDTO) IsValid() error {
 		return util.InvalidArgsError()
 	}
 	return nil
+}
+
+type ListRepoReqDTO struct {
+	Offset     int64
+	Limit      int
+	SearchName string
+	ProjectId  string
+	Operator   usermd.UserInfo
+}
+
+func (r *ListRepoReqDTO) IsValid() error {
+	if r.Operator.Account == "" {
+		return util.InvalidArgsError()
+	}
+	if r.Offset < 0 {
+		return util.InvalidArgsError()
+	}
+	if r.Limit < 0 || r.Limit > 1000 {
+		return util.InvalidArgsError()
+	}
+	if len(r.SearchName) > 128 {
+		return util.InvalidArgsError()
+	}
+	if len(r.ProjectId) == 0 || len(r.ProjectId) > 128 {
+		return util.InvalidArgsError()
+	}
+	return nil
+}
+
+type ListRepoRespDTO struct {
+	RepoList   []repomd.Repo
+	TotalCount int64
+	Cursor     int64
+	Limit      int
 }
 
 type CommitDTO struct {

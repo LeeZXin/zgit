@@ -13,7 +13,6 @@ import (
 	"zgit/pkg/git"
 	"zgit/pkg/i18n"
 	"zgit/setting"
-	"zgit/standalone/modules/model/projectmd"
 	"zgit/standalone/modules/model/repomd"
 	"zgit/standalone/modules/service/projectsrv"
 	"zgit/util"
@@ -36,9 +35,12 @@ func GetRepoInfoByPath(ctx context.Context, path string) (repomd.RepoInfo, bool,
 }
 
 func EntriesRepo(ctx context.Context, reqDTO EntriesRepoReqDTO) (TreeDTO, error) {
+	if err := reqDTO.IsValid(); err != nil {
+		return TreeDTO{}, err
+	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	repo, b, err := repomd.GetByRepoId(ctx, reqDTO.RepoId)
+	repo, b, err := repomd.GetByPath(ctx, reqDTO.RepoPath)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
 		return TreeDTO{}, util.InternalError()
@@ -46,11 +48,11 @@ func EntriesRepo(ctx context.Context, reqDTO EntriesRepoReqDTO) (TreeDTO, error)
 	if !b {
 		return TreeDTO{}, util.InvalidArgsError()
 	}
-	exists, err := projectsrv.ProjectUserExists(ctx, repo.ProjectId, reqDTO.Operator.Account)
+	b, err = projectsrv.ProjectUserExists(ctx, repo.ProjectId, reqDTO.Operator.Account)
 	if err != nil {
 		return TreeDTO{}, err
 	}
-	if !exists {
+	if !b {
 		return TreeDTO{}, util.UnauthorizedError()
 	}
 	// 空仓库 需要推代码
@@ -69,13 +71,80 @@ func EntriesRepo(ctx context.Context, reqDTO EntriesRepoReqDTO) (TreeDTO, error)
 	return LsRet2TreeDTO(commits, reqDTO.Offset, LsTreeLimit), nil
 }
 
+// ListRepo 展示仓库列表
+func ListRepo(ctx context.Context, reqDTO ListRepoReqDTO) (ListRepoRespDTO, error) {
+	if err := reqDTO.IsValid(); err != nil {
+		return ListRepoRespDTO{}, err
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	b, err := projectsrv.ProjectUserExists(ctx, reqDTO.ProjectId, reqDTO.Operator.Account)
+	if err != nil {
+		return ListRepoRespDTO{}, err
+	}
+	if !b {
+		return ListRepoRespDTO{}, util.UnauthorizedError()
+	}
+	totalCount, err := repomd.CountRepo(ctx, reqDTO.ProjectId, reqDTO.SearchName)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return ListRepoRespDTO{}, util.InternalError()
+	}
+	repoList, err := repomd.ListRepo(ctx, reqDTO.Offset, reqDTO.Limit, reqDTO.ProjectId, reqDTO.SearchName)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return ListRepoRespDTO{}, util.InternalError()
+	}
+	ret := ListRepoRespDTO{
+		RepoList:   repoList,
+		TotalCount: totalCount,
+		Limit:      reqDTO.Limit,
+	}
+	if len(repoList) > 0 {
+		ret.Cursor = repoList[len(repoList)-1].Id
+	}
+	return ret, nil
+}
+
+// CatFile 展示文件内容
+func CatFile(ctx context.Context, reqDTO CatFileReqDTO) (git.FileMode, string, error) {
+	if err := reqDTO.IsValid(); err != nil {
+		return "", "", err
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	repo, b, err := repomd.GetByPath(ctx, reqDTO.RepoPath)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return "", "", util.InternalError()
+	}
+	if !b {
+		return "", "", util.InvalidArgsError()
+	}
+	b, err = projectsrv.ProjectUserExists(ctx, repo.ProjectId, reqDTO.Operator.Account)
+	if err != nil {
+		return "", "", err
+	}
+	if !b {
+		return "", "", util.UnauthorizedError()
+	}
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
+	fileMode, content, b, err := git.GetFileContentByRef(ctx, absPath, reqDTO.RefName, reqDTO.FileName)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return "", "", util.InternalError()
+	}
+	return fileMode, content, nil
+}
+
+// TreeRepo 代码基本数据
 func TreeRepo(ctx context.Context, reqDTO TreeRepoReqDTO) (TreeRepoRespDTO, error) {
 	if err := reqDTO.IsValid(); err != nil {
 		return TreeRepoRespDTO{}, err
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	repo, b, err := repomd.GetByRepoId(ctx, reqDTO.RepoId)
+	repo, b, err := repomd.GetByPath(ctx, reqDTO.RepoPath)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
 		return TreeRepoRespDTO{}, util.InternalError()
@@ -83,11 +152,11 @@ func TreeRepo(ctx context.Context, reqDTO TreeRepoReqDTO) (TreeRepoRespDTO, erro
 	if !b {
 		return TreeRepoRespDTO{}, util.InvalidArgsError()
 	}
-	exists, err := projectsrv.ProjectUserExists(ctx, repo.ProjectId, reqDTO.Operator.Account)
+	b, err = projectsrv.ProjectUserExists(ctx, repo.ProjectId, reqDTO.Operator.Account)
 	if err != nil {
 		return TreeRepoRespDTO{}, err
 	}
-	if !exists {
+	if !b {
 		return TreeRepoRespDTO{}, util.UnauthorizedError()
 	}
 	// 空仓库 需要推代码
@@ -108,12 +177,12 @@ func TreeRepo(ctx context.Context, reqDTO TreeRepoReqDTO) (TreeRepoRespDTO, erro
 		logger.Logger.WithContext(ctx).Error(err)
 		return TreeRepoRespDTO{}, util.InternalError()
 	}
-	readme, hasReadme, err := git.GetFileContentByRef(ctx, absPath, reqDTO.RefName, filepath.Join(reqDTO.Dir, "readme.md"))
+	_, readme, hasReadme, err := git.GetFileContentByRef(ctx, absPath, reqDTO.RefName, filepath.Join(reqDTO.Dir, "readme.md"))
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
 	}
 	if err == nil && !hasReadme {
-		readme, hasReadme, err = git.GetFileContentByRef(ctx, absPath, reqDTO.RefName, filepath.Join(reqDTO.Dir, "README.md"))
+		_, readme, hasReadme, err = git.GetFileContentByRef(ctx, absPath, reqDTO.RefName, filepath.Join(reqDTO.Dir, "README.md"))
 		if err != nil {
 			logger.Logger.WithContext(ctx).Error(err)
 		}
@@ -170,13 +239,12 @@ func InitRepo(ctx context.Context, reqDTO InitRepoReqDTO) error {
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	// 校验项目信息
-	_, b, err := projectmd.GetByProjectId(ctx, reqDTO.ProjectId)
+	b, err := projectsrv.ProjectUserExists(ctx, reqDTO.ProjectId, reqDTO.Operator.Account)
 	if err != nil {
-		logger.Logger.WithContext(ctx).Error(err)
-		return bizerr.NewBizErr(apicode.InternalErrorCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+		return err
 	}
 	if !b {
-		return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.ProjectNotFound))
+		return util.UnauthorizedError()
 	}
 	// 相对路径
 	relativePath := util.JoinRelativeRepoPath(setting.StandaloneCorpId(), reqDTO.Name)
@@ -233,7 +301,7 @@ func InitRepo(ctx context.Context, reqDTO InitRepoReqDTO) error {
 			size, err := git.GetRepoSize(absPath)
 			logger.Logger.WithContext(ctx).Infof("repo size: %d", size)
 			if err == nil {
-				repomd.UpdateTotalAndGitSize(ctx, repo.RepoId, size, size)
+				repomd.UpdateTotalAndGitSize(ctx, repo.Path, size, size)
 			}
 		}
 		return nil
@@ -257,7 +325,7 @@ func DeleteRepo(ctx context.Context, reqDTO DeleteRepoReqDTO) error {
 		return err
 	}
 	if err := mysqlstore.WithTx(ctx, func(ctx context.Context) error {
-		repo, b, err := repomd.GetByRepoId(ctx, reqDTO.RepoId)
+		repo, b, err := repomd.GetByPath(ctx, reqDTO.RepoPath)
 		if err != nil {
 			return err
 		}
@@ -270,7 +338,7 @@ func DeleteRepo(ctx context.Context, reqDTO DeleteRepoReqDTO) error {
 			// 拼接绝对路径
 			absPath := filepath.Join(setting.RepoDir(), repo.Path)
 			logger.Logger.WithContext(ctx).Infof("user: %s delete repo: %s", reqDTO.Operator.Account, absPath)
-			_, err = repomd.DeleteRepo(ctx, reqDTO.RepoId)
+			_, err = repomd.DeleteRepo(ctx, reqDTO.RepoPath)
 			if err != nil {
 				return err
 			}

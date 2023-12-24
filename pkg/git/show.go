@@ -154,23 +154,27 @@ func GetFileContentByBlob(ctx context.Context, repoPath, blob string) (string, e
 	return result.ReadAsString(), nil
 }
 
-func GetFileContentByRef(ctx context.Context, repoPath, refName, filePath string) (string, bool, error) {
+func GetFileContentByRef(ctx context.Context, repoPath, refName, filePath string) (FileMode, string, bool, error) {
 	result, err := command.NewCommand("ls-tree", "--full-tree", "-l", refName, "--", filePath).Run(ctx, command.WithDir(repoPath))
 	if err != nil {
-		return "", false, err
+		return "", "", false, err
 	}
 	ret := result.ReadAsString()
 	if ret == "" {
-		return "", false, nil
+		return "", "", false, nil
 	}
-	blob := ""
 	fields := strings.Fields(strings.TrimSpace(ret))
-	if len(fields) >= 3 {
-		blob = fields[2]
+	if len(fields) < 3 {
+		return "", "", false, errors.New("unknown format")
 	}
-	content, err := GetFileContentByBlob(ctx, repoPath, blob)
-	if err != nil {
-		return "", false, err
+	blob := fields[2]
+	mode := fields[0]
+	if mode == RegularFileMode.String() {
+		content, err := GetFileContentByBlob(ctx, repoPath, blob)
+		if err != nil {
+			return "", "", false, err
+		}
+		return RegularFileMode, content, true, nil
 	}
-	return content, true, nil
+	return FileMode(mode), "", true, nil
 }
