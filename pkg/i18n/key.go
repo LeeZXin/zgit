@@ -8,6 +8,7 @@ const (
 	SystemInvalidArgs   Key = "system.invalidArgs"
 	SystemNotLogin      Key = "system.notLogin"
 	SystemUnauthorized  Key = "system.unauthorized"
+	SystemUnimplemented Key = "system.unimplemented"
 )
 
 const (
@@ -20,6 +21,7 @@ const (
 	UserInvalidPassword  Key = "user.invalidPassword"
 	UserNotFound         Key = "user.notFound"
 	UserWrongPassword    Key = "user.wrongPassword"
+	UserAlreadyExists    Key = "user.alreadyExists"
 )
 
 const (
@@ -35,6 +37,7 @@ const (
 	InternalRepoType Key = "repo.internalType"
 	PublicRepoType   Key = "repo.publicType"
 	UnKnownRepoType  Key = "repo.unknownType"
+	PrivateRepoType  Key = "repo.privateType"
 )
 
 const (
@@ -62,6 +65,15 @@ const (
 	CorpEmptyId Key = "corp.emptyId"
 )
 
+const (
+	TimeBeforeSecondUnit Key = "time.beforeSecondUnit"
+	TimeBeforeMinuteUnit Key = "time.beforeMinuteUnit"
+	TimeBeforeHourUnit   Key = "time.beforeHourUnit"
+	TimeBeforeDayUnit    Key = "time.beforeDdayUnit"
+	TimeBeforeMonthUnit  Key = "time.beforeMonthUnit"
+	TimeBeforeYearUnit   Key = "time.beforeYearUnit"
+)
+
 var (
 	defaultRetMap = map[Key]string{
 		SystemInternalError: "系统异常",
@@ -69,6 +81,7 @@ var (
 		SystemInvalidArgs:   "参数错误",
 		SystemNotLogin:      "未登录",
 		SystemUnauthorized:  "权限不足",
+		SystemUnimplemented: "方法未实现",
 
 		UserInvalidId:       "用户id不合法",
 		UserInvalidName:     "用户姓名不合法",
@@ -78,6 +91,7 @@ var (
 		UserInvalidPassword: "用户密码不合法",
 		UserNotFound:        "用户不存在",
 		UserWrongPassword:   "密码不正确",
+		UserAlreadyExists:   "用户已存在",
 
 		SshKeyFormatError:    "ssh公钥格式错误",
 		SshKeyAlreadyExists:  "ssh公钥已存在",
@@ -89,6 +103,7 @@ var (
 		InternalRepoType: "普通仓库",
 		PublicRepoType:   "开源仓库",
 		UnKnownRepoType:  "未知类型",
+		PrivateRepoType:  "私有仓库",
 
 		RepoInvalidName:          "仓库名称不合法",
 		RepoInvalidDescLength:    "仓库描述长度不合法",
@@ -105,6 +120,13 @@ var (
 
 		ProjectInvalidId: "项目id不合法",
 		ProjectNotFound:  "项目不存在",
+
+		TimeBeforeSecondUnit: "秒前",
+		TimeBeforeMinuteUnit: "分钟前",
+		TimeBeforeHourUnit:   "小时前",
+		TimeBeforeDayUnit:    "天前",
+		TimeBeforeMonthUnit:  "月前",
+		TimeBeforeYearUnit:   "年前",
 	}
 )
 

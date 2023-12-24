@@ -2,8 +2,7 @@ package cmd
 
 import (
 	"github.com/urfave/cli/v2"
-	"zgit/modules/model/clustermd"
-	"zgit/pkg/sshserv/proxy"
+	"zgit/gateway/sshproxy"
 )
 
 var Proxy = &cli.Command{
@@ -14,9 +13,7 @@ var Proxy = &cli.Command{
 }
 
 func runProxy(*cli.Context) error {
-	// 初始化节点信息
-	clustermd.InitNodesConfig()
 	// 开启反向代理
-	proxy.StartSSHProxy()
+	sshproxy.StartSSHProxy()
 	return nil
 }

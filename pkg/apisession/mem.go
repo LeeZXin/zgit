@@ -24,7 +24,7 @@ func (s *memStore) GetBySessionId(sessionId string) (Session, bool, error) {
 	return ret, b, nil
 }
 
-func (s *memStore) GetByUserId(userId string) (Session, bool, error) {
+func (s *memStore) GetByAccount(userId string) (Session, bool, error) {
 	s.RLock()
 	defer s.RUnlock()
 	ret, b := s.userSession[userId]
@@ -35,16 +35,16 @@ func (s *memStore) PutSession(session Session) error {
 	s.Lock()
 	defer s.Unlock()
 	s.session[session.SessionId] = session
-	s.userSession[session.UserInfo.UserId] = session
+	s.userSession[session.UserInfo.Account] = session
 	return nil
 }
 
-func (s *memStore) DeleteByUserId(userId string) error {
+func (s *memStore) DeleteByAccount(account string) error {
 	s.Lock()
 	defer s.Unlock()
-	session, b := s.userSession[userId]
+	session, b := s.userSession[account]
 	if b {
-		delete(s.userSession, userId)
+		delete(s.userSession, account)
 		delete(s.session, session.SessionId)
 	}
 	return nil
@@ -55,7 +55,7 @@ func (s *memStore) DeleteBySessionId(sessionId string) error {
 	defer s.Unlock()
 	session, b := s.session[sessionId]
 	if b {
-		delete(s.userSession, session.UserInfo.UserId)
+		delete(s.userSession, session.UserInfo.Account)
 		delete(s.session, sessionId)
 	}
 	return nil
@@ -68,7 +68,7 @@ func (s *memStore) RefreshExpiry(sessionId string, expireAt int64) error {
 	if b {
 		session.ExpireAt = expireAt
 		s.session[sessionId] = session
-		s.userSession[session.UserInfo.UserId] = session
+		s.userSession[session.UserInfo.Account] = session
 	}
 	return nil
 }

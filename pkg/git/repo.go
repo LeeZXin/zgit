@@ -44,7 +44,7 @@ func initEmptyRepository(ctx context.Context, repoPath string, bare bool) error 
 	if repoPath == "" {
 		return errors.New("repoPath is empty")
 	}
-	logger.Logger.Infof("init repo: %s", repoPath)
+	logger.Logger.WithContext(ctx).Infof("init repo: %s", repoPath)
 	isExist, err := util.IsExist(repoPath)
 	if err != nil {
 		return err
@@ -128,7 +128,7 @@ func commitAndPushRepository(ctx context.Context, opts CommitAndPushOpts) error 
 	env := append(
 		os.Environ(),
 		util.JoinFields(
-			"GIT_AUTHOR_NAME", opts.Owner.Name,
+			"GIT_AUTHOR_NAME", opts.Owner.Account,
 			"GIT_AUTHOR_EMAIL", opts.Owner.Email,
 			"GIT_AUTHOR_DATE", commitTimeStr,
 			"GIT_COMMITTER_DATE", commitTimeStr,
@@ -142,11 +142,11 @@ func commitAndPushRepository(ctx context.Context, opts CommitAndPushOpts) error 
 		"commit",
 		"--no-gpg-sign",
 		fmt.Sprintf("--message='%s'", opts.CommitMsg),
-		fmt.Sprintf("--author='%s <%s>'", opts.Committer.Name, opts.Committer.Email),
+		fmt.Sprintf("--author='%s <%s>'", opts.Committer.Account, opts.Committer.Email),
 	)
 	env = append(env,
 		util.JoinFields(
-			"GIT_COMMITTER_NAME", opts.Committer.Name,
+			"GIT_COMMITTER_NAME", opts.Committer.Account,
 			"GIT_COMMITTER_EMAIL", opts.Committer.Email,
 		)...,
 	)

@@ -4,12 +4,13 @@ go 1.20
 
 require (
 	github.com/42wim/sshsig v0.0.0-20211121163825-841cf5bbc121
-	github.com/LeeZXin/zsf v1.0.86
+	github.com/LeeZXin/zsf v1.0.91
 	github.com/LeeZXin/zsf-utils v1.0.29
 	github.com/gin-gonic/gin v1.9.1
 	github.com/gliderlabs/ssh v0.3.5
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/urfave/cli/v2 v2.25.7
 	golang.org/x/crypto v0.11.0
 	golang.org/x/sys v0.10.0

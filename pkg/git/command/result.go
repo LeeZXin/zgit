@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"unsafe"
 )
@@ -62,7 +63,7 @@ func (r *ReadPipeResult) RangeStringLines(rangeFn func(int, string) (bool, error
 		if isPrefix {
 			continue
 		}
-		shouldContinue, err := rangeFn(i, string(line))
+		shouldContinue, err := rangeFn(i, strings.TrimSpace(string(line)))
 		if err != nil {
 			return err
 		}

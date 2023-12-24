@@ -13,25 +13,25 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"zgit/modules/api/hookapi"
 	"zgit/pkg/git"
 	"zgit/pkg/hook"
+	"zgit/standalone/modules/api/hookapi"
 	"zgit/util"
 )
 
 // subHookPreReceive 可用于仓库大小检查提交权限和分支
 var subHookPreReceive = &cli.Command{
 	Name:        "pre-receive",
-	Usage:       "pre-receive Git hook",
-	Description: "This command should only be called by Git",
+	Usage:       "pre-receive Standalone hook",
+	Description: "This command should only be called by Standalone",
 	Action:      runPreReceive,
 }
 
 // subHookPostReceive 用于发送通知等
 var subHookPostReceive = &cli.Command{
 	Name:        "post-receive",
-	Usage:       "post-receive Git hook",
-	Description: "This command should only be called by Git",
+	Usage:       "post-receive Standalone hook",
+	Description: "This command should only be called by Standalone",
 	Action:      runHookPostReceive,
 }
 

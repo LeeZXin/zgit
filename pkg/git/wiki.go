@@ -42,7 +42,7 @@ func UpdateWikiPage(ctx context.Context, wikiPath, pageName, content, message st
 	if err != nil {
 		return fmt.Errorf("hash content failed with err:%v", err)
 	}
-	if err = AddObjectToIndex(ctx, tempDir, DefaultFileMode, object, pageName); err != nil {
+	if err = AddObjectToIndex(ctx, tempDir, RegularFileMode.String(), object, pageName); err != nil {
 		return fmt.Errorf("addObjectToIndex failed with err:%v", err)
 	}
 	return afterUpdateWikiPage(ctx, tempDir, message, hasMasterBranch)
@@ -55,7 +55,7 @@ func DeleteWikiPage(ctx context.Context, wikiPath, pageName, message string) err
 	if err != nil {
 		return err
 	}
-	if err = RemoveFilesFromIndex(ctx, tempDir, DefaultFileMode, pageName); err != nil {
+	if err = RemoveFilesFromIndex(ctx, tempDir, RegularFileMode.String(), pageName); err != nil {
 		return fmt.Errorf("RemoveFilesFromIndex failed with err:%v", err)
 	}
 	return afterUpdateWikiPage(ctx, tempDir, message, hasMasterBranch)

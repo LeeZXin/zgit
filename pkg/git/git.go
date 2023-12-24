@@ -20,6 +20,40 @@ const (
 	ZeroCommitId = "0000000000000000000000000000000000000000"
 )
 
+type FileMode string
+
+const (
+	RegularFileMode    FileMode = "100644"
+	SymbolicLinkMode   FileMode = "120000"
+	ExecutableFileMode FileMode = "100755"
+	DirectoryMode      FileMode = "040000"
+	SubModuleMode      FileMode = "160000"
+	TreeFileMode       FileMode = "040755"
+)
+
+func (m FileMode) String() string {
+	return string(m)
+}
+
+func (m FileMode) Readable() string {
+	switch m {
+	case RegularFileMode:
+		return "regular"
+	case SymbolicLinkMode:
+		return "symlink"
+	case ExecutableFileMode:
+		return "executable"
+	case DirectoryMode:
+		return "directory"
+	case SubModuleMode:
+		return "subModule"
+	case TreeFileMode:
+		return "tree"
+	default:
+		return "unknown"
+	}
+}
+
 const (
 	EnvRepoID     = "ZGIT_REPO_ID"
 	EnvRepoPath   = "ZGIT_REPO_PATH"

@@ -50,10 +50,6 @@ var (
 	EndBytesFlag = []byte("\000")
 )
 
-const (
-	DefaultFileMode = "100644"
-)
-
 type DiffNumsStatInfo struct {
 	FileChangeNums int `json:"fileChangeNums"`
 	InsertNums     int `json:"insertNums"`
@@ -85,8 +81,8 @@ type DiffFileDetail struct {
 func NewDiffDetail(filePath string) *DiffFileDetail {
 	return &DiffFileDetail{
 		FilePath: filePath,
-		OldMode:  DefaultFileMode,
-		Mode:     DefaultFileMode,
+		OldMode:  RegularFileMode.String(),
+		Mode:     RegularFileMode.String(),
 		FileType: ModifiedFileType,
 	}
 }

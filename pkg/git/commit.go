@@ -25,17 +25,19 @@ var (
 )
 
 type Commit struct {
-	Id               string
-	Tree             *Tree
-	Parent           []string
-	Author           *User
-	AuthorSigTime    *time.Time
-	Committer        *User
-	CommitterSigTime *time.Time
-	GpgSig           signature.GPGSig
-	CommitMsg        string
-	Tag              *Tag
-	Payload          string
+	Id            string
+	Tree          *Tree
+	Parent        []string
+	Author        User
+	AuthorSigTime time.Time
+	Committer     User
+	CommitSigTime time.Time
+	Tagger        User
+	TagSigTime    time.Time
+	GpgSig        signature.GPGSig
+	CommitMsg     string
+	Tag           *Tag
+	Payload       string
 }
 
 func (c *Commit) VerifyGPGSignature(pubKeys ...*signature.GPGPublicKey) error {
@@ -72,7 +74,7 @@ func (c *Commit) VerifySshSignature(publicKey string) error {
 	return signature.VerifySshSignature(c.GpgSig.String(), c.Payload, publicKey)
 }
 
-func NewCommit(id string) *Commit {
+func newCommit(id string) *Commit {
 	return &Commit{
 		Id:     id,
 		Parent: make([]string, 0),
@@ -84,8 +86,8 @@ type Tag struct {
 	Object    string
 	Typ       string
 	Tag       string
-	Tagger    *User
-	TagTime   *time.Time
+	Tagger    User
+	TagTime   time.Time
 	CommitMsg string
 }
 
@@ -113,7 +115,7 @@ func CheckRefIsCommit(ctx context.Context, repoPath string, name string) bool {
 }
 
 func GetCommitByCommitId(ctx context.Context, repoPath string, commitId string) (*Commit, error) {
-	c := NewCommit(commitId)
+	c := newCommit(commitId)
 	return c, CatFileBatch(ctx, repoPath, commitId, func(r io.Reader, closer command.PipeResultCloser) error {
 		defer closer.ClosePipe()
 		reader := bufio.NewReader(r)
@@ -270,8 +272,10 @@ func genCommit(r io.Reader, commit *Commit) error {
 			commit.Parent = append(commit.Parent, fields[1])
 		case "author":
 			commit.Author, commit.AuthorSigTime = parseUserAndTime(fields[1:])
+		case "tagger":
+			commit.Tagger, commit.TagSigTime = parseUserAndTime(fields[1:])
 		case "committer":
-			commit.Committer, commit.CommitterSigTime = parseUserAndTime(fields[1:])
+			commit.Committer, commit.CommitSigTime = parseUserAndTime(fields[1:])
 		case "gpgsig":
 			if len(fields) <= 1 {
 				continue
@@ -302,11 +306,11 @@ func genCommit(r io.Reader, commit *Commit) error {
 	}
 }
 
-func parseUserAndTime(f []string) (*User, *time.Time) {
+func parseUserAndTime(f []string) (User, time.Time) {
 	u := User{}
 	l := len(f)
 	if l >= 1 {
-		u.Name = f[0]
+		u.Account = f[0]
 	}
 	if l >= 2 {
 		u.Email = f[1][1 : len(f[1])-1]
@@ -337,7 +341,7 @@ func parseUserAndTime(f []string) (*User, *time.Time) {
 			}
 		}
 	}
-	return &u, &eventTime
+	return u, eventTime
 }
 
 func GetFullShaCommitId(ctx context.Context, repoPath, short string) (string, error) {
@@ -358,4 +362,14 @@ func GetGitLogCommitList(ctx context.Context, repoPath, target, head string) ([]
 	return listutil.Map(idList, func(t string) (*Commit, error) {
 		return GetCommitByCommitId(ctx, repoPath, t)
 	})
+}
+
+func GetFileLastCommit(ctx context.Context, repoPath, refName, filePath string) (*Commit, error) {
+	result, err := command.NewCommand("log", PrettyLogFormat, "-1", refName, "--", filePath).
+		Run(ctx, command.WithDir(repoPath))
+	if err != nil {
+		return nil, err
+	}
+	commitId := strings.TrimSpace(result.ReadAsString())
+	return GetCommitByCommitId(ctx, repoPath, commitId)
 }

@@ -22,20 +22,20 @@ func IsExist(path string) (bool, error) {
 	return false, err
 }
 
-func JoinRelativeRepoPath(corpId, nodeId, repoName string) string {
-	return filepath.Join(corpId, nodeId, repoName) + ".git"
+func JoinRelativeRepoPath(str ...string) string {
+	return filepath.Join(str...) + ".git"
 }
 
-func JoinRelativeWikiPath(corpId, nodeId, repoName string) string {
-	return filepath.Join(corpId, nodeId, repoName) + ".wiki"
+func JoinRelativeWikiPath(str ...string) string {
+	return filepath.Join(str...) + ".wiki"
 }
 
-func JoinAbsRepoPath(corpId, nodeId, repoName string) string {
-	return filepath.Join(setting.RepoDir(), JoinRelativeRepoPath(corpId, nodeId, repoName))
+func JoinAbsRepoPath(str ...string) string {
+	return filepath.Join(setting.RepoDir(), JoinRelativeRepoPath(str...))
 }
 
-func JoinAbsWikiPath(corpId, nodeId, wikiName string) string {
-	return filepath.Join(setting.RepoDir(), JoinRelativeWikiPath(corpId, nodeId, wikiName))
+func JoinAbsWikiPath(str ...string) string {
+	return filepath.Join(setting.RepoDir(), JoinRelativeWikiPath(str...))
 }
 
 // RemoveAll removes the named file or (empty) directory with at most 5 attempts.
@@ -66,10 +66,10 @@ func RemoveAll(name string) error {
 }
 
 // Rename renames (moves) oldpath to newpath with at most 5 attempts.
-func Rename(oldpath, newpath string) error {
+func Rename(oldPath, newPath string) error {
 	var err error
 	for i := 0; i < 5; i++ {
-		err = os.Rename(oldpath, newpath)
+		err = os.Rename(oldPath, newPath)
 		if err == nil {
 			break
 		}

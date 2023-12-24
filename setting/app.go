@@ -24,6 +24,8 @@ var (
 	resourcesDir string
 
 	lang = static.GetString("app.lang")
+
+	standaloneCorpId = static.GetString("app.corpId")
 )
 
 func init() {
@@ -135,4 +137,8 @@ func LfsDir() string {
 
 func Lang() string {
 	return lang
+}
+
+func StandaloneCorpId() string {
+	return standaloneCorpId
 }

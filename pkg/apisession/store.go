@@ -6,7 +6,7 @@ import (
 	"github.com/LeeZXin/zsf-utils/idutil"
 	"strconv"
 	"time"
-	"zgit/modules/model/usermd"
+	"zgit/standalone/modules/model/usermd"
 )
 
 const (
@@ -26,9 +26,9 @@ type Session struct {
 
 type Store interface {
 	GetBySessionId(string) (Session, bool, error)
-	GetByUserId(string) (Session, bool, error)
+	GetByAccount(string) (Session, bool, error)
 	PutSession(Session) error
-	DeleteByUserId(string) error
+	DeleteByAccount(string) error
 	DeleteBySessionId(string) error
 	RefreshExpiry(string, int64) error
 }

@@ -7,7 +7,7 @@ import (
 
 var (
 	cmdList = []*cli.Command{
-		Git,
+		Standalone,
 		Proxy,
 		Hook,
 	}
@@ -17,7 +17,7 @@ func NewCliApp() *cli.App {
 	app := cli.NewApp()
 	app.EnableBashCompletion = true
 	app.HideHelp = true
-	app.DefaultCommand = Git.Name
+	app.DefaultCommand = Standalone.Name
 	app.Commands = append(app.Commands, cmdList...)
 	app.Name = "zgit"
 	app.Usage = "A Serv service with zsf"

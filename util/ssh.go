@@ -12,7 +12,7 @@ import (
 )
 
 func ExitWithErrMsg(session ssh.Session, msg string) {
-	fmt.Fprintf(session.Stderr(), msg)
+	fmt.Fprintf(session.Stderr(), msg+"\n")
 	session.Exit(1)
 }
 

@@ -15,6 +15,8 @@ const (
 	NotAdminCode
 	OutOfLimitCode
 	UnauthorizedCode
+	UnimplementedCode
+	UserAlreadyExistsCode
 )
 
 func (c Code) Int() int {
