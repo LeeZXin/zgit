@@ -7,9 +7,11 @@ import (
 	"github.com/urfave/cli/v2"
 	"zgit/pkg/git"
 	"zgit/setting"
+	"zgit/standalone/modules/api/branchapi"
 	"zgit/standalone/modules/api/hookapi"
 	"zgit/standalone/modules/api/lfsapi"
 	"zgit/standalone/modules/api/projectapi"
+	"zgit/standalone/modules/api/pullrequestapi"
 	"zgit/standalone/modules/api/repoapi"
 	"zgit/standalone/modules/api/sshkeyapi"
 	"zgit/standalone/modules/api/userapi"
@@ -46,6 +48,10 @@ func runStandalone(*cli.Context) error {
 	sshkeyapi.InitApi()
 	// 项目
 	projectapi.InitApi()
+	// 合并请求
+	pullrequestapi.InitApi()
+	// 分支
+	branchapi.InitApi()
 	starter.Run()
 	return nil
 }

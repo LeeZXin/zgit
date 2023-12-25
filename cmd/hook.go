@@ -73,7 +73,6 @@ func runPreReceive(c *cli.Context) error {
 func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
 	infoList := make([]hookapi.RevInfo, 0)
 	// the environment is set by serv command
-	isWiki, _ := strconv.ParseBool(os.Getenv(git.EnvRepoIsWiki))
 	pusherId := os.Getenv(git.EnvPusherID)
 	prId := os.Getenv(git.EnvPRID)
 	repoPath := os.Getenv(git.EnvRepoPath)
@@ -99,7 +98,6 @@ func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
 	for _, partition := range partitionList {
 		reqVO := hookapi.OptsReqVO{
 			RevInfoList: partition,
-			IsWiki:      isWiki,
 			PusherId:    pusherId,
 			PrId:        prId,
 			RepoPath:    repoPath,

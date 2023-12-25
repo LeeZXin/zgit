@@ -55,7 +55,7 @@ func (r *DeleteRepoReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 128 || len(r.RepoPath) == 0 {
+	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -72,7 +72,7 @@ func (r *TreeRepoReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 128 || len(r.RepoPath) == 0 {
+	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
 		return util.InvalidArgsError()
 	}
 	if len(r.RefName) > 128 || len(r.RefName) == 0 {
@@ -96,7 +96,7 @@ func (r *CatFileReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 128 || len(r.RepoPath) == 0 {
+	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
 		return util.InvalidArgsError()
 	}
 	if len(r.RefName) > 128 || len(r.RefName) == 0 {
@@ -105,7 +105,7 @@ func (r *CatFileReqDTO) IsValid() error {
 	if len(r.Dir) > 128 || len(r.Dir) == 0 {
 		return util.InvalidArgsError()
 	}
-	if len(r.FileName) > 128 || len(r.FileName) == 0 {
+	if len(r.FileName) > 255 || len(r.FileName) == 0 {
 		return util.InvalidArgsError()
 	}
 	if strings.HasSuffix(r.Dir, "/") {
@@ -126,7 +126,7 @@ func (r *EntriesRepoReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 128 || len(r.RepoPath) == 0 {
+	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
 		return util.InvalidArgsError()
 	}
 	if r.RefName == "" {
@@ -156,7 +156,7 @@ func (r *ListRepoReqDTO) IsValid() error {
 	if r.Offset < 0 {
 		return util.InvalidArgsError()
 	}
-	if r.Limit < 0 || r.Limit > 1000 {
+	if r.Limit <= 0 || r.Limit > 1000 {
 		return util.InvalidArgsError()
 	}
 	if len(r.SearchName) > 128 {
@@ -205,6 +205,41 @@ type TreeRepoRespDTO struct {
 	HasReadme    bool
 	RecentCommit CommitDTO
 	Tree         TreeDTO
+}
+
+type RepoTypeDTO struct {
+	Option int
+	Name   string
+}
+
+type AllBranchesReqDTO struct {
+	RepoPath string
+	Operator usermd.UserInfo
+}
+
+func (r *AllBranchesReqDTO) IsValid() error {
+	if r.Operator.Account == "" {
+		return util.InvalidArgsError()
+	}
+	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+		return util.InvalidArgsError()
+	}
+	return nil
+}
+
+type AllTagsReqDTO struct {
+	RepoPath string
+	Operator usermd.UserInfo
+}
+
+func (r *AllTagsReqDTO) IsValid() error {
+	if r.Operator.Account == "" {
+		return util.InvalidArgsError()
+	}
+	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+		return util.InvalidArgsError()
+	}
+	return nil
 }
 
 var gitignoreSet = hashset.NewHashSet([]string{

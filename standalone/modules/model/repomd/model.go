@@ -2,54 +2,12 @@ package repomd
 
 import (
 	"time"
-	"zgit/pkg/i18n"
 )
 
 const (
-	RepoTableName = "repo"
+	RepoTableName       = "repo"
+	RepoManageTableName = "repo_manage"
 )
-
-type RepoType int
-
-const (
-	InternalRepoType RepoType = iota
-	PublicRepoType
-	PrivateRepoType
-)
-
-var (
-	repoTypeStringMap = map[RepoType]string{
-		InternalRepoType: i18n.GetByKey(i18n.InternalRepoType),
-		PublicRepoType:   i18n.GetByKey(i18n.PublicRepoType),
-		PrivateRepoType:  i18n.GetByKey(i18n.PrivateRepoType),
-	}
-)
-
-func (t RepoType) String() string {
-	ret, b := repoTypeStringMap[t]
-	if b {
-		return ret
-	}
-	return i18n.GetByKey(i18n.UnKnownRepoType)
-}
-
-func (t RepoType) IsValid() bool {
-	_, b := repoTypeStringMap[t]
-	return b
-}
-
-type RepoInfo struct {
-	Name      string `json:"name"`
-	Path      string `json:"path"`
-	Author    string `json:"author"`
-	ProjectId string `json:"projectId"`
-	RepoType  int    `json:"repoType"`
-	IsEmpty   bool   `json:"isEmpty"`
-	TotalSize int64  `json:"totalSize"`
-	WikiSize  int64  `json:"wikiSize"`
-	GitSize   int64  `json:"gitSize"`
-	LfsSize   int64  `json:"lfsSize"`
-}
 
 type Repo struct {
 	Id            int64     `json:"id" xorm:"pk autoincr"`
@@ -86,4 +44,17 @@ func (r *Repo) ToRepoInfo() RepoInfo {
 		LfsSize:   r.LfsSize,
 		WikiSize:  r.WikiSize,
 	}
+}
+
+type RepoManage struct {
+	Id         int64     `json:"id" xorm:"pk autoincr"`
+	RepoPath   string    `json:"repoPath"`
+	Account    string    `json:"account"`
+	ManageType int       `json:"manageType"`
+	Created    time.Time `json:"created" xorm:"created"`
+	Updated    time.Time `json:"updated" xorm:"updated"`
+}
+
+func (*RepoManage) TableName() string {
+	return RepoManageTableName
 }

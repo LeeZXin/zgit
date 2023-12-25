@@ -124,7 +124,7 @@ func CountObjects(ctx context.Context, repoPath string) (int64, float64, error) 
 
 type FileCommit struct {
 	LsTreeRet
-	*Commit
+	Commit
 }
 
 func LsTreeCommit(ctx context.Context, repoPath, refName string, dir string, offset, limit int) ([]FileCommit, error) {

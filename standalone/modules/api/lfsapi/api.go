@@ -91,7 +91,7 @@ func packRepoPath(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	repo, b, err := reposrv.GetRepoInfoByPath(ctx, repoPath)
+	repo, b, err := reposrv.GetInfoByPath(ctx, repoPath)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrVO{
 			Message: "internal error",

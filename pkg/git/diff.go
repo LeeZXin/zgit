@@ -54,7 +54,7 @@ type DiffNumsStatInfo struct {
 	FileChangeNums int `json:"fileChangeNums"`
 	InsertNums     int `json:"insertNums"`
 	DeleteNums     int `json:"deleteNums"`
-	Stats          []*DiffNumsStat
+	Stats          []DiffNumsStat
 }
 
 type DiffNumsStat struct {
@@ -78,8 +78,8 @@ type DiffFileDetail struct {
 	Lines       []DiffLine
 }
 
-func NewDiffDetail(filePath string) *DiffFileDetail {
-	return &DiffFileDetail{
+func newDiffDetail(filePath string) DiffFileDetail {
+	return DiffFileDetail{
 		FilePath: filePath,
 		OldMode:  RegularFileMode.String(),
 		Mode:     RegularFileMode.String(),
@@ -108,9 +108,9 @@ func GetFilesDiffCount(ctx context.Context, repoPath, target, head string) (int,
 	return bytes.Count(result.ReadAsBytes(), EndBytesFlag), nil
 }
 
-func GenDiffNumsStat(ctx context.Context, repoPath, target, head string) (*DiffNumsStatInfo, error) {
+func GenDiffNumsStat(ctx context.Context, repoPath, target, head string) (DiffNumsStatInfo, error) {
 	pipeResult := command.NewCommand("diff", "--numstat", target+".."+head, "--").RunWithReadPipe(ctx, command.WithDir(repoPath))
-	ret := make([]*DiffNumsStat, 0)
+	ret := make([]DiffNumsStat, 0)
 	insertNumsTotal := 0
 	deleteNumsTotal := 0
 	if err := pipeResult.RangeStringLines(func(_ int, line string) (bool, error) {
@@ -126,7 +126,7 @@ func GenDiffNumsStat(ctx context.Context, repoPath, target, head string) (*DiffN
 			}
 			insertNumsTotal += insertNums
 			deleteNumsTotal += deleteNums
-			ret = append(ret, &DiffNumsStat{
+			ret = append(ret, DiffNumsStat{
 				Path:       fields[2],
 				InsertNums: insertNums,
 				DeleteNums: deleteNums,
@@ -135,9 +135,9 @@ func GenDiffNumsStat(ctx context.Context, repoPath, target, head string) (*DiffN
 		}
 		return true, nil
 	}); err != nil {
-		return nil, err
+		return DiffNumsStatInfo{}, err
 	}
-	return &DiffNumsStatInfo{
+	return DiffNumsStatInfo{
 		FileChangeNums: len(ret),
 		InsertNums:     insertNumsTotal,
 		DeleteNums:     deleteNumsTotal,
@@ -177,18 +177,18 @@ func GenDiffShortStat(ctx context.Context, repoPath, target, head string) (int, 
 	return fileChangeNums, insertNums, deleteNums, nil
 }
 
-func GenDiffFileDetail(ctx context.Context, repoPath, target, head, filePath string) (*DiffFileDetail, error) {
-	pipeResult := command.NewCommand("diff", "--src-prefix=a/", "--dst-prefix=b/", target+".."+head, "--", filePath).RunWithReadPipe(ctx, command.WithDir(repoPath))
+func GetDiffFileDetail(ctx context.Context, repoPath, target, head, filePath string) (DiffFileDetail, error) {
+	pipeResult := command.NewCommand("diff", "--src-prefix=a/", "--dst-prefix=b/", head+".."+target, "--", filePath).RunWithReadPipe(ctx, command.WithDir(repoPath))
 	defer pipeResult.ClosePipe()
 	reader := bufio.NewReader(pipeResult.Reader())
-	c := NewDiffDetail(filePath)
+	c := newDiffDetail(filePath)
 	for {
 		line, isPrefix, err := reader.ReadLine()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			return nil, err
+			return DiffFileDetail{}, err
 		}
 		if isPrefix {
 			continue
@@ -197,7 +197,7 @@ func GenDiffFileDetail(ctx context.Context, repoPath, target, head, filePath str
 		if strings.HasPrefix(lineStr, "diff --git") {
 			// nothing
 		} else if strings.HasPrefix(lineStr, "index") {
-			if strings.HasSuffix(lineStr, "160000") {
+			if strings.HasSuffix(lineStr, SubModuleMode.String()) {
 				c.IsSubModule = true
 			}
 		} else if strings.HasPrefix(lineStr, "---") {
@@ -206,22 +206,22 @@ func GenDiffFileDetail(ctx context.Context, repoPath, target, head, filePath str
 			// parse hunks
 			c.Lines, err = parseHunks(reader)
 			if err != nil {
-				return nil, fmt.Errorf("parse hunks err:%v", err)
+				return DiffFileDetail{}, fmt.Errorf("parse hunks err: %v", err)
 			}
 		} else if strings.HasPrefix(lineStr, "new mode") {
 			c.Mode = strings.TrimSpace(strings.TrimPrefix(lineStr, "new mode"))
-			if strings.HasSuffix(lineStr, "160000") {
+			if strings.HasSuffix(lineStr, SubModuleMode.String()) {
 				c.IsSubModule = true
 			}
 		} else if strings.HasPrefix(lineStr, "old mode") {
 			c.OldMode = strings.TrimSpace(strings.TrimPrefix(lineStr, "old mode"))
-			if strings.HasSuffix(lineStr, "160000") {
+			if strings.HasSuffix(lineStr, SubModuleMode.String()) {
 				c.IsSubModule = true
 			}
 		} else if strings.HasPrefix(lineStr, "new file mode") {
 			c.FileType = CreatedFileType
-			c.Mode = strings.TrimSpace(strings.TrimPrefix(lineStr, "new mode"))
-			if strings.HasSuffix(lineStr, "160000") {
+			c.Mode = strings.TrimSpace(strings.TrimPrefix(lineStr, "new file mode"))
+			if strings.HasSuffix(lineStr, SubModuleMode.String()) {
 				c.IsSubModule = true
 			}
 		} else if strings.HasPrefix(lineStr, "rename from") {
@@ -269,17 +269,14 @@ func parseHunks(reader *bufio.Reader) ([]DiffLine, error) {
 			if err != nil {
 				return nil, err
 			}
-			leftNo--
-			rightNo--
 			ret = append(ret, DiffLine{
 				Index:   index,
-				LeftNo:  leftNo,
+				LeftNo:  leftNo - 1,
 				Prefix:  TagLinePrefix,
-				RightNo: rightNo,
+				RightNo: rightNo - 1,
 				Text:    lineStr,
 			})
 		} else if strings.HasPrefix(lineStr, "+") {
-			rightNo++
 			ret = append(ret, DiffLine{
 				Index:   index,
 				LeftNo:  leftNo,
@@ -287,9 +284,9 @@ func parseHunks(reader *bufio.Reader) ([]DiffLine, error) {
 				RightNo: rightNo,
 				Text:    lineStr[1:],
 			})
+			rightNo++
 			insertionNums++
 		} else if strings.HasPrefix(lineStr, "-") {
-			leftNo++
 			ret = append(ret, DiffLine{
 				Index:   index,
 				LeftNo:  leftNo,
@@ -297,10 +294,9 @@ func parseHunks(reader *bufio.Reader) ([]DiffLine, error) {
 				RightNo: rightNo,
 				Text:    lineStr[1:],
 			})
+			leftNo++
 			deletionNums++
 		} else {
-			leftNo++
-			rightNo++
 			ret = append(ret, DiffLine{
 				Index:   index,
 				LeftNo:  leftNo,
@@ -308,6 +304,8 @@ func parseHunks(reader *bufio.Reader) ([]DiffLine, error) {
 				RightNo: rightNo,
 				Text:    lineStr[1:],
 			})
+			leftNo++
+			rightNo++
 		}
 		index++
 	}
@@ -319,29 +317,41 @@ func parseHunkString(line string) (int, int, int, int, error) {
 	if len(fields) < 4 || fields[0] != "@@" || fields[3] != "@@" {
 		return 0, 0, 0, 0, errors.New("invalid @@ format")
 	}
+	var (
+		o1, o2, n1, n2 int
+		err            error
+	)
 	o := strings.Split(fields[1][1:], ",")
-	if len(o) < 2 {
-		return 0, 0, 0, 0, errors.New("invalid @@ format")
-	}
-	o1, err := strconv.Atoi(o[0])
-	if err != nil {
-		return 0, 0, 0, 0, err
-	}
-	o2, err := strconv.Atoi(o[1])
-	if err != nil {
-		return 0, 0, 0, 0, err
+	if len(o) >= 2 {
+		o1, err = strconv.Atoi(o[0])
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
+		o2, err = strconv.Atoi(o[1])
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
+	} else {
+		o1, err = strconv.Atoi(o[0])
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
 	}
 	n := strings.Split(fields[2][1:], ",")
-	if len(o) < 2 {
-		return 0, 0, 0, 0, errors.New("invalid @@ format")
-	}
-	n1, err := strconv.Atoi(n[0])
-	if err != nil {
-		return 0, 0, 0, 0, err
-	}
-	n2, err := strconv.Atoi(n[1])
-	if err != nil {
-		return 0, 0, 0, 0, err
+	if len(n) >= 2 {
+		n1, err = strconv.Atoi(n[0])
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
+		n2, err = strconv.Atoi(n[1])
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
+	} else {
+		n1, err = strconv.Atoi(n[0])
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
 	}
 	return o1, o2, n1, n2, nil
 }

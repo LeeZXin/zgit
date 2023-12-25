@@ -23,7 +23,7 @@ func SearchByKeyContent(ctx context.Context, key gossh.PublicKey) (sshkeymd.SshK
 	sshKey, b := sshKeyCache.Get(keyContent)
 	if b {
 		ret := sshKey.(sshkeymd.SshKey)
-		if ret.KeyId == "" {
+		if ret.Id == 0 {
 			return ret, false, nil
 		}
 		return ret, true, nil

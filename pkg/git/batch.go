@@ -60,7 +60,7 @@ func CatFileBatch(ctx context.Context, repoPath string, name string, readFn func
 	return readFn(pipe.Reader(), pipe)
 }
 
-func CatFileExists(ctx context.Context, repoPath string, name string) error {
+func CheckExists(ctx context.Context, repoPath string, name string) bool {
 	_, err := command.NewCommand("cat-file", "-e", name).Run(ctx, command.WithDir(repoPath))
-	return err
+	return err == nil
 }

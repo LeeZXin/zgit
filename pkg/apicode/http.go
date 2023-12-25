@@ -10,6 +10,7 @@ const (
 	InvalidArgsCode Code = iota + 40000
 	BadRequestCode
 	DataNotExistsCode
+	DataAlreadyExistsCode
 	WrongLoginPasswordCode
 	NotLoginCode
 	NotAdminCode

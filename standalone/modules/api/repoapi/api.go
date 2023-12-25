@@ -19,6 +19,8 @@ func InitApi() {
 		{
 			// 获取模版列表
 			group.GET("/allGitIgnoreTemplateList", allGitIgnoreTemplateList)
+			// 获取仓库类型列表
+			group.GET("/allTypeList", allTypeList)
 			// 初始化仓库
 			group.POST("/init", initRepo)
 			// 删除仓库
@@ -31,8 +33,68 @@ func InitApi() {
 			group.POST("/entries", entriesRepo)
 			// 展示单个文件内容
 			group.POST("/catFile", catFile)
-
+			// 展示仓库所有分支
+			group.POST("/allBranches", allBranches)
+			// 展示仓库所有tag
+			group.POST("/allTags", allTags)
 		}
+		// 仓库管理
+		group = e.Group("/api/repoManage", apicommon.CheckLogin)
+		{
+			group.POST("/insert")
+			group.POST("/delete")
+			group.POST("/list")
+		}
+	})
+}
+
+func allBranches(c *gin.Context) {
+	var req AllBranchesReqVO
+	if util.ShouldBindJSON(&req, c) {
+		branches, err := reposrv.AllBranches(c.Request.Context(), reposrv.AllBranchesReqDTO{
+			RepoPath: req.RepoPath,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		c.JSON(http.StatusOK, AllBranchesRespVO{
+			BaseResp: ginutil.DefaultSuccessResp,
+			Data:     branches,
+		})
+	}
+}
+
+func allTags(c *gin.Context) {
+	var req AllTagsReqVO
+	if util.ShouldBindJSON(&req, c) {
+		branches, err := reposrv.AllTags(c.Request.Context(), reposrv.AllTagsReqDTO{
+			RepoPath: req.RepoPath,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		c.JSON(http.StatusOK, AllBranchesRespVO{
+			BaseResp: ginutil.DefaultSuccessResp,
+			Data:     branches,
+		})
+	}
+}
+
+// allTypeList 仓库类型列表
+func allTypeList(c *gin.Context) {
+	data, _ := listutil.Map(reposrv.AllTypeList(), func(t reposrv.RepoTypeDTO) (RepoTypeVO, error) {
+		return RepoTypeVO{
+			Option: t.Option,
+			Name:   t.Name,
+		}, nil
+	})
+	c.JSON(http.StatusOK, AllTypeListRespVO{
+		BaseResp: ginutil.DefaultSuccessResp,
+		Data:     data,
 	})
 }
 
@@ -178,7 +240,7 @@ func listRepo(c *gin.Context) {
 				Path:      t.Path,
 				Author:    t.Author,
 				ProjectId: t.ProjectId,
-				RepoType:  repomd.RepoType(t.RepoType).String(),
+				RepoType:  repomd.RepoType(t.RepoType).Readable(),
 				IsEmpty:   t.IsEmpty,
 				TotalSize: t.TotalSize,
 				WikiSize:  t.WikiSize,

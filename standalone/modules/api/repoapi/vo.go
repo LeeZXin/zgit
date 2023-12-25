@@ -110,3 +110,31 @@ type CatFileRespVO struct {
 	Mode    string `json:"mode"`
 	Content string `json:"content"`
 }
+
+type RepoTypeVO struct {
+	Option int    `json:"option"`
+	Name   string `json:"name"`
+}
+
+type AllTypeListRespVO struct {
+	ginutil.BaseResp
+	Data []RepoTypeVO `json:"data"`
+}
+
+type AllBranchesReqVO struct {
+	RepoPath string `json:"repoPath"`
+}
+
+type AllBranchesRespVO struct {
+	ginutil.BaseResp
+	Data []string `json:"data"`
+}
+
+type AllTagsReqVO struct {
+	RepoPath string `json:"repoPath"`
+}
+
+type AllTagsRespVO struct {
+	ginutil.BaseResp
+	Data []string `json:"data"`
+}

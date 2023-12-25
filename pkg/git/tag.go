@@ -21,5 +21,5 @@ func CheckRefIsTag(ctx context.Context, repoPath string, tag string) bool {
 	if !strings.HasPrefix(tag, TagPrefix) {
 		tag = TagPrefix + tag
 	}
-	return CatFileExists(ctx, repoPath, tag) == nil
+	return CheckExists(ctx, repoPath, tag)
 }

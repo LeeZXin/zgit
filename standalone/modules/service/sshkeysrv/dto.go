@@ -12,7 +12,7 @@ type InsertSshKeyReqDTO struct {
 }
 
 func (r *InsertSshKeyReqDTO) IsValid() error {
-	if !util.AtLeastOneCharPattern.MatchString(r.Name) || len(r.Name) > 32 {
+	if len(r.Name) == 0 || len(r.Name) > 128 {
 		return util.InvalidArgsError()
 	}
 	if r.PubKeyContent == "" {
@@ -30,7 +30,7 @@ type DeleteSshKeyReqDTO struct {
 }
 
 func (r *DeleteSshKeyReqDTO) IsValid() error {
-	if !util.AtLeastOneCharPattern.MatchString(r.KeyId) {
+	if len(r.KeyId) == 0 || len(r.KeyId) > 32 {
 		return util.InvalidArgsError()
 	}
 	if r.Operator.Account == "" {

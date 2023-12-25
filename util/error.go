@@ -17,3 +17,7 @@ func InternalError() error {
 func UnauthorizedError() error {
 	return bizerr.NewBizErr(apicode.UnauthorizedCode.Int(), i18n.GetByKey(i18n.SystemUnauthorized))
 }
+
+func AlreadyExistsError() error {
+	return bizerr.NewBizErr(apicode.DataAlreadyExistsCode.Int(), i18n.GetByKey(i18n.SystemAlreadyExists))
+}

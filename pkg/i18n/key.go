@@ -9,6 +9,7 @@ const (
 	SystemNotLogin      Key = "system.notLogin"
 	SystemUnauthorized  Key = "system.unauthorized"
 	SystemUnimplemented Key = "system.unimplemented"
+	SystemAlreadyExists Key = "system.dataAlreadyExists"
 )
 
 const (
@@ -74,6 +75,15 @@ const (
 	TimeBeforeYearUnit   Key = "time.beforeYearUnit"
 )
 
+const (
+	RepoDeveloper      Key = "repo.developer"
+	RepoMaintainer     Key = "repo.maintainer"
+	RepoGuest          Key = "repo.guestUser"
+	RepoCodeReviewer   Key = "repo.codeReviewer"
+	RepoProhibitedUser Key = "repo.prohibitedUser"
+	RepoUnknownUser    Key = "repo.unknownUser"
+)
+
 var (
 	defaultRetMap = map[Key]string{
 		SystemInternalError: "系统异常",
@@ -82,6 +92,7 @@ var (
 		SystemNotLogin:      "未登录",
 		SystemUnauthorized:  "权限不足",
 		SystemUnimplemented: "方法未实现",
+		SystemAlreadyExists: "数据已存在",
 
 		UserInvalidId:       "用户id不合法",
 		UserInvalidName:     "用户姓名不合法",
@@ -127,6 +138,13 @@ var (
 		TimeBeforeDayUnit:    "天前",
 		TimeBeforeMonthUnit:  "月前",
 		TimeBeforeYearUnit:   "年前",
+
+		RepoDeveloper:      "开发者",
+		RepoMaintainer:     "管理员",
+		RepoGuest:          "访客",
+		RepoCodeReviewer:   "代码评审员",
+		RepoProhibitedUser: "禁止访问",
+		RepoUnknownUser:    "未知类型",
 	}
 )
 

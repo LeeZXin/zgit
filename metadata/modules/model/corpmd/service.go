@@ -2,6 +2,7 @@ package corpmd
 
 import (
 	"context"
+	"github.com/LeeZXin/zsf/xorm/xormutil"
 )
 
 func InsertCorp(ctx context.Context, reqDTO InsertCorpReqDTO) (Corp, error) {

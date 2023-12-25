@@ -1,17 +1,12 @@
 package sshkeymd
 
 import (
-	"github.com/LeeZXin/zsf-utils/idutil"
 	"time"
 )
 
 const (
 	SshKeyTableName = "ssh_key"
 )
-
-func GenKeyId() string {
-	return idutil.RandomUuid()
-}
 
 type SshKey struct {
 	Id          int64     `xorm:"pk autoincr"`

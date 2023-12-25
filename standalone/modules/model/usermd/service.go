@@ -19,7 +19,7 @@ func InsertUser(ctx context.Context, reqDTO InsertUserReqDTO) (User, error) {
 }
 
 func DeleteUser(ctx context.Context, user User) (bool, error) {
-	rows, err := xormutil.MustGetXormSession(ctx).Where("account = ?", user.Account).Limit(1).Delete(new(User))
+	rows, err := xormutil.MustGetXormSession(ctx).Where("account = ?", user.Account).Delete(new(User))
 	return rows == 1, err
 }
 

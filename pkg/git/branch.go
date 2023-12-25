@@ -24,7 +24,7 @@ func CheckRefIsBranch(ctx context.Context, repoPath string, branch string) bool 
 	if !strings.HasPrefix(branch, BranchPrefix) {
 		branch = BranchPrefix + branch
 	}
-	return CatFileExists(ctx, repoPath, branch) == nil
+	return CheckExists(ctx, repoPath, branch)
 }
 
 func CheckCommitIfInBranch(ctx context.Context, repoPath, commitId, branch string) (bool, error) {

@@ -18,9 +18,3 @@ var (
 		lfsAuthenticateVerb:  perm.AccessModeNone,
 	}
 )
-
-type ServCommandResults struct {
-	IsWiki    bool
-	RepoPath  string
-	ClusterId string
-}

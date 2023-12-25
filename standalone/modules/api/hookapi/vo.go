@@ -13,7 +13,6 @@ type OptsReqVO struct {
 	RepoPath    string    `json:"repoPath"`
 	PrId        string    `json:"prId"`
 	PusherId    string    `json:"pusherId"`
-	IsWiki      bool      `json:"isWiki"`
 }
 
 type HttpRespVO struct {

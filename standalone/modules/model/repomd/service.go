@@ -63,7 +63,7 @@ func InsertRepo(ctx context.Context, reqDTO InsertRepoReqDTO) (Repo, error) {
 		ProjectId:     reqDTO.ProjectId,
 		RepoDesc:      reqDTO.RepoDesc,
 		DefaultBranch: reqDTO.DefaultBranch,
-		RepoType:      int(reqDTO.RepoType),
+		RepoType:      reqDTO.RepoType.Int(),
 		IsEmpty:       reqDTO.IsEmpty,
 		TotalSize:     reqDTO.TotalSize,
 		GitSize:       reqDTO.GitSize,
@@ -73,7 +73,35 @@ func InsertRepo(ctx context.Context, reqDTO InsertRepoReqDTO) (Repo, error) {
 	return r, err
 }
 
-func DeleteRepo(ctx context.Context, path string) (bool, error) {
-	rows, err := xormutil.MustGetXormSession(ctx).Where("path = ?", path).Limit(1).Delete(new(Repo))
+func DeleteRepo(ctx context.Context, repo Repo) (bool, error) {
+	rows, err := xormutil.MustGetXormSession(ctx).Where("path = ?", repo.Path).Delete(new(Repo))
 	return rows == 1, err
+}
+
+func InsertRepoUser(ctx context.Context, repoPath, account string, manageType ManageType) (RepoManage, error) {
+	ret := RepoManage{
+		RepoPath:   repoPath,
+		Account:    account,
+		ManageType: manageType.Int(),
+	}
+	_, err := xormutil.MustGetXormSession(ctx).Insert(&ret)
+	return ret, err
+}
+
+func DeleteRepoUser(ctx context.Context, repoPath, account string, manageType ManageType) (bool, error) {
+	rows, err := xormutil.MustGetXormSession(ctx).
+		Where("repo_path = ?", repoPath).
+		And("account = ?", account).
+		And("manage_type = ?", manageType.Int()).
+		Limit(1).
+		Delete(new(RepoManage))
+	return rows == 1, err
+}
+
+func CheckRepoUserExists(ctx context.Context, repoPath, account string, typeList ...ManageType) (bool, error) {
+	return xormutil.MustGetXormSession(ctx).
+		Where("repo_path = ?", repoPath).
+		And("account = ?", account).
+		In("manage_type", typeList).
+		Exist(new(RepoManage))
 }

@@ -74,8 +74,8 @@ func (c *Commit) VerifySshSignature(publicKey string) error {
 	return signature.VerifySshSignature(c.GpgSig.String(), c.Payload, publicKey)
 }
 
-func newCommit(id string) *Commit {
-	return &Commit{
+func newCommit(id string) Commit {
+	return Commit{
 		Id:     id,
 		Parent: make([]string, 0),
 	}
@@ -111,10 +111,10 @@ func GetRefCommitId(ctx context.Context, repoPath string, name string) (string, 
 }
 
 func CheckRefIsCommit(ctx context.Context, repoPath string, name string) bool {
-	return CatFileExists(ctx, repoPath, name) == nil
+	return CheckExists(ctx, repoPath, name)
 }
 
-func GetCommitByCommitId(ctx context.Context, repoPath string, commitId string) (*Commit, error) {
+func GetCommitByCommitId(ctx context.Context, repoPath string, commitId string) (Commit, error) {
 	c := newCommit(commitId)
 	return c, CatFileBatch(ctx, repoPath, commitId, func(r io.Reader, closer command.PipeResultCloser) error {
 		defer closer.ClosePipe()
@@ -142,14 +142,14 @@ func GetCommitByCommitId(ctx context.Context, repoPath string, commitId string) 
 		}
 		switch typ {
 		case CommitType:
-			return genCommit(io.LimitReader(reader, size), c)
+			return genCommit(io.LimitReader(reader, size), &c)
 		default:
 			return fmt.Errorf("unsupported type: %s", typ)
 		}
 	})
 }
 
-func GetCommitByTag(ctx context.Context, repoPath string, tag string) (c *Commit, e error) {
+func GetCommitByTag(ctx context.Context, repoPath string, tag string) (c Commit, e error) {
 	e = CatFileBatch(ctx, repoPath, tag, func(r io.Reader, closer command.PipeResultCloser) error {
 		defer closer.ClosePipe()
 		reader := bufio.NewReader(r)
@@ -352,23 +352,23 @@ func GetFullShaCommitId(ctx context.Context, repoPath, short string) (string, er
 	return short, nil
 }
 
-func GetGitLogCommitList(ctx context.Context, repoPath, target, head string) ([]*Commit, error) {
+func GetGitLogCommitList(ctx context.Context, repoPath, target, head string) ([]Commit, error) {
 	result, err := command.NewCommand("log", PrettyLogFormat, target+".."+head, "--max-count=500", "--").
 		Run(ctx, command.WithDir(repoPath))
 	if err != nil {
 		return nil, err
 	}
 	idList := strings.Fields(strings.TrimSpace(result.ReadAsString()))
-	return listutil.Map(idList, func(t string) (*Commit, error) {
+	return listutil.Map(idList, func(t string) (Commit, error) {
 		return GetCommitByCommitId(ctx, repoPath, t)
 	})
 }
 
-func GetFileLastCommit(ctx context.Context, repoPath, refName, filePath string) (*Commit, error) {
+func GetFileLastCommit(ctx context.Context, repoPath, refName, filePath string) (Commit, error) {
 	result, err := command.NewCommand("log", PrettyLogFormat, "-1", refName, "--", filePath).
 		Run(ctx, command.WithDir(repoPath))
 	if err != nil {
-		return nil, err
+		return Commit{}, err
 	}
 	commitId := strings.TrimSpace(result.ReadAsString())
 	return GetCommitByCommitId(ctx, repoPath, commitId)

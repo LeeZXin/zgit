@@ -6,21 +6,24 @@ import (
 	"errors"
 	"fmt"
 	"github.com/LeeZXin/zsf/logger"
+	"github.com/LeeZXin/zsf/xorm/mysqlstore"
 	"github.com/gliderlabs/ssh"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/kballard/go-shellquote"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 	"zgit/pkg/git"
 	"zgit/pkg/git/command"
 	"zgit/pkg/git/lfs"
 	"zgit/pkg/git/process"
+	"zgit/pkg/i18n"
 	"zgit/pkg/perm"
 	"zgit/setting"
+	"zgit/standalone/modules/model/projectmd"
+	"zgit/standalone/modules/model/repomd"
 	"zgit/standalone/modules/model/usermd"
 	"zgit/util"
 )
@@ -42,7 +45,7 @@ func HandleSshCommand(ctx context.Context, cmd string, keyUser usermd.UserInfo, 
 				return nil
 			}
 		}
-		return errors.New("too few arguments")
+		return errors.New(i18n.GetByKey(i18n.SystemInvalidArgs))
 	}
 	return after(ctx, keyUser, words, session)
 }
@@ -73,9 +76,8 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 			return errors.New("Unknown LFS verb:" + lfsVerb)
 		}
 	}
-	results, b, err := checkAccessMode(ctx, operator, repoPath, accessMode, verb, lfsVerb)
-	if err != nil {
-		return errors.New("not authorized")
+	if err := checkAccessMode(ctx, operator, repoPath, accessMode); err != nil {
+		return err
 	}
 	// LFS token authentication
 	if verb == lfsAuthenticateVerb {
@@ -86,7 +88,7 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 				ExpiresAt: jwt.NewNumericDate(now.Add(setting.LfsJwtAuthExpiry())),
 				NotBefore: jwt.NewNumericDate(now),
 			},
-			RepoPath: results.RepoPath,
+			RepoPath: repoPath,
 			Op:       lfsVerb,
 			Account:  operator.Account,
 		}
@@ -111,7 +113,7 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 	var gitCmd *exec.Cmd
 	gitBinPath := filepath.Dir(setting.GitExecutablePath()) // e.g. /usr/bin
 	gitBinVerb := filepath.Join(gitBinPath, verb)           // e.g. /usr/bin/git-upload-pack
-	if _, err = os.Stat(gitBinVerb); err != nil {
+	if _, err := os.Stat(gitBinVerb); err != nil {
 		verbFields := strings.SplitN(verb, "-", 2)
 		if len(verbFields) == 2 {
 			gitCmd = exec.CommandContext(ctx, setting.GitExecutablePath(), verbFields[1], repoPath)
@@ -128,7 +130,6 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 	gitCmd.Env = append(gitCmd.Env, os.Environ()...)
 	gitCmd.Env = append(gitCmd.Env,
 		util.JoinFields(
-			git.EnvRepoIsWiki, strconv.FormatBool(results.IsWiki),
 			git.EnvRepoPath, repoPath,
 			git.EnvPusherID, operator.Account,
 			git.EnvAppUrl, setting.AppUrl(),
@@ -138,6 +139,55 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 	return gitCmd.Run()
 }
 
-func checkAccessMode(ctx context.Context, user usermd.UserInfo, repoPath string, accessMode perm.AccessMode, verbs ...string) (ServCommandResults, bool, error) {
-	return ServCommandResults{}, true, nil
+func checkAccessMode(ctx context.Context, user usermd.UserInfo, repoPath string, accessMode perm.AccessMode) error {
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	repo, b, err := repomd.GetByPath(ctx, repoPath)
+	if err != nil {
+		logger.Logger.Error(err)
+		return errors.New(i18n.GetByKey(i18n.SystemInternalError))
+	}
+	if !b {
+		return errors.New(i18n.GetByKey(i18n.RepoNotFound))
+	}
+	b, err = projectmd.ProjectUserExists(ctx, repo.ProjectId, user.Account)
+	if err != nil {
+		logger.Logger.Error(err)
+		return errors.New(i18n.GetByKey(i18n.SystemInternalError))
+	}
+	if !b {
+		return errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
+	}
+	b, err = repomd.CheckRepoUserExists(ctx, repoPath, user.Account, repomd.ProhibitedUser)
+	if err != nil {
+		logger.Logger.Error(err)
+		return errors.New(i18n.GetByKey(i18n.SystemInternalError))
+	}
+	if b {
+		return errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
+	}
+	if accessMode == perm.AccessModeWrite {
+		// 检查权限
+		b, err = repomd.CheckRepoUserExists(ctx, repoPath, user.Account, repomd.Developer, repomd.Maintainer)
+		if err != nil {
+			logger.Logger.Error(err)
+			return errors.New(i18n.GetByKey(i18n.SystemInternalError))
+		}
+		if !b {
+			return errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
+		}
+	} else if accessMode == perm.AccessModeRead {
+		// 检查权限
+		b, err = repomd.CheckRepoUserExists(ctx, repoPath, user.Account, repomd.Guest, repomd.Developer, repomd.Maintainer)
+		if err != nil {
+			logger.Logger.Error(err)
+			return errors.New(i18n.GetByKey(i18n.SystemInternalError))
+		}
+		if !b {
+			return errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
+		}
+	} else {
+		return errors.New(i18n.GetByKey(i18n.SystemInvalidArgs))
+	}
+	return nil
 }

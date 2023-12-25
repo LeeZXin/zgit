@@ -38,8 +38,8 @@ func CheckLogin(c *gin.Context) {
 		return
 	}
 	now := time.Now()
-	// session不存在或超时
-	if !b || session.ExpireAt < now.UnixMilli() {
+	// session不存在
+	if !b {
 		c.JSON(http.StatusUnauthorized, ginutil.BaseResp{
 			Code:    apicode.NotLoginCode.Int(),
 			Message: i18n.GetByKey(i18n.SystemNotLogin),

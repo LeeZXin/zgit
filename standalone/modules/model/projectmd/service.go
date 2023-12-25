@@ -34,10 +34,8 @@ func InsertProjectUser(ctx context.Context, projectId, account string) error {
 	return err
 }
 
-func DeleteProjectUser(ctx context.Context, projectId, account string) (bool, error) {
-	rows, err := xormutil.MustGetXormSession(ctx).Where("project_id = ?", projectId).
-		And("account = ?", account).
-		Limit(1).
+func DeleteProjectUser(ctx context.Context, project ProjectUser) (bool, error) {
+	rows, err := xormutil.MustGetXormSession(ctx).Where("id = ?", project.Id).
 		Delete(new(ProjectUser))
 	return rows == 1, err
 }

@@ -25,37 +25,37 @@ var (
 )
 
 type PreparePullRequestInfo struct {
-	OriginHead    string            `json:"originHead"`
-	OriginTarget  string            `json:"originTarget"`
-	Target        string            `json:"target"`
-	Head          string            `json:"head"`
-	TargetCommit  *Commit           `json:"targetCommit"`
-	HeadCommit    *Commit           `json:"headCommit"`
-	Commits       []*Commit         `json:"commits"`
-	NumFiles      int               `json:"numFiles"`
-	DiffNumsStats *DiffNumsStatInfo `json:"diffNumsStats"`
+	OriginHead    string           `json:"originHead"`
+	OriginTarget  string           `json:"originTarget"`
+	Target        string           `json:"target"`
+	Head          string           `json:"head"`
+	TargetCommit  Commit           `json:"targetCommit"`
+	HeadCommit    Commit           `json:"headCommit"`
+	Commits       []Commit         `json:"commits"`
+	NumFiles      int              `json:"numFiles"`
+	DiffNumsStats DiffNumsStatInfo `json:"diffNumsStats"`
 }
 
 type MergeRepoOpts struct {
 	Message string
 }
 
-func PreparePullRequest(ctx context.Context, repoPath, target, head string) (*PreparePullRequestInfo, error) {
-	pr := new(PreparePullRequestInfo)
+func PreparePullRequest(ctx context.Context, repoPath, target, head string) (PreparePullRequestInfo, error) {
+	pr := PreparePullRequestInfo{}
 	pr.OriginTarget, pr.OriginHead = target, head
 	if !strings.HasPrefix(head, BranchPrefix) {
 		head = BranchPrefix + head
 	}
 	if !CheckRefIsBranch(ctx, repoPath, head) {
-		return nil, fmt.Errorf("%s is not branch", head)
+		return PreparePullRequestInfo{}, fmt.Errorf("%s is not branch", head)
 	}
 	commitId, err := GetRefCommitId(ctx, repoPath, head)
 	if err != nil {
-		return nil, err
+		return PreparePullRequestInfo{}, err
 	}
 	pr.HeadCommit, err = GetCommitByCommitId(ctx, repoPath, commitId)
 	if err != nil {
-		return nil, err
+		return PreparePullRequestInfo{}, err
 	}
 	if CheckRefIsTag(ctx, repoPath, target) {
 		if !strings.HasPrefix(target, TagPrefix) {
@@ -63,7 +63,7 @@ func PreparePullRequest(ctx context.Context, repoPath, target, head string) (*Pr
 		}
 		pr.TargetCommit, err = GetCommitByTag(ctx, repoPath, target)
 		if err != nil {
-			return nil, err
+			return PreparePullRequestInfo{}, err
 		}
 	} else if CheckRefIsBranch(ctx, repoPath, target) {
 		if !strings.HasPrefix(target, BranchPrefix) {
@@ -71,36 +71,36 @@ func PreparePullRequest(ctx context.Context, repoPath, target, head string) (*Pr
 		}
 		commitId, err = GetRefCommitId(ctx, repoPath, target)
 		if err != nil {
-			return nil, err
+			return PreparePullRequestInfo{}, err
 		}
 		pr.TargetCommit, err = GetCommitByCommitId(ctx, repoPath, commitId)
 		if err != nil {
-			return nil, err
+			return PreparePullRequestInfo{}, err
 		}
 	} else if CheckRefIsCommit(ctx, repoPath, target) {
 		commitId, err = GetRefCommitId(ctx, repoPath, target)
 		if err != nil {
-			return nil, err
+			return PreparePullRequestInfo{}, err
 		}
 		pr.TargetCommit, err = GetCommitByCommitId(ctx, repoPath, commitId)
 		if err != nil {
-			return nil, err
+			return PreparePullRequestInfo{}, err
 		}
 	} else {
-		return nil, fmt.Errorf("%s unsupported type", target)
+		return PreparePullRequestInfo{}, fmt.Errorf("%s unsupported type", target)
 	}
 	// 这里要反过来 git log 查看target的提交记录 不是head的提交记录
 	pr.Commits, err = GetGitLogCommitList(ctx, repoPath, pr.HeadCommit.Id, pr.TargetCommit.Id)
 	if err != nil {
-		return nil, err
+		return PreparePullRequestInfo{}, err
 	}
 	pr.NumFiles, err = GetFilesDiffCount(ctx, repoPath, pr.TargetCommit.Id, pr.HeadCommit.Id)
 	if err != nil {
-		return nil, err
+		return PreparePullRequestInfo{}, err
 	}
 	pr.DiffNumsStats, err = GenDiffNumsStat(ctx, repoPath, pr.TargetCommit.Id, pr.HeadCommit.Id)
 	if err != nil {
-		return nil, err
+		return PreparePullRequestInfo{}, err
 	}
 	pr.Head, pr.Target = head, target
 	return pr, nil
@@ -114,10 +114,7 @@ func Merge(ctx context.Context, repoPath, target, head string, opts MergeRepoOpt
 	return doMerge(ctx, repoPath, prInfo, opts)
 }
 
-func doMerge(ctx context.Context, repoPath string, pr *PreparePullRequestInfo, opts MergeRepoOpts) error {
-	if pr == nil {
-		return errors.New("prepare pull request is nil")
-	}
+func doMerge(ctx context.Context, repoPath string, pr PreparePullRequestInfo, opts MergeRepoOpts) error {
 	if len(pr.Commits) == 0 {
 		return errors.New("nothing to commit")
 	}
