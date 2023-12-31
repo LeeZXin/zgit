@@ -55,8 +55,8 @@ func (m FileMode) Readable() string {
 }
 
 const (
-	EnvRepoPath   = "ZGIT_REPO_PATH"
-	EnvPusherID   = "ZGIT_PUSHER_ID"
+	EnvRepoId     = "ZGIT_REPO_ID"
+	EnvPusherId   = "ZGIT_PUSHER_ID"
 	EnvPRID       = "ZGIT_PR_ID"
 	EnvIsInternal = "ZGIT_INTERNAL_PUSH"
 	EnvAppUrl     = "ZGIT_APP_URL"
@@ -237,9 +237,17 @@ func IsBranchExist(ctx context.Context, repoPath, name string) bool {
 	return IsReferenceExist(ctx, repoPath, name)
 }
 
-func HashObject(ctx context.Context, repoPath string, reader io.Reader) (string, error) {
+func HashObjectByStdin(ctx context.Context, repoPath string, reader io.Reader) (string, error) {
 	result, err := command.NewCommand("hash-object", "-w", "--stdin").
 		Run(ctx, command.WithDir(repoPath), command.WithStdin(reader))
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(result.ReadAsString()), nil
+}
+
+func HashObjectByPath(ctx context.Context, repoPath, relativePath, absolutePath string) (string, error) {
+	result, err := command.NewCommand("hash-object", "-w", "--path", relativePath, absolutePath).Run(ctx, command.WithDir(repoPath))
 	if err != nil {
 		return "", err
 	}
@@ -268,10 +276,10 @@ func RemoveFilesFromIndex(ctx context.Context, repoPath string, filenames ...str
 }
 
 // WriteTree writes the current index as a tree to the object db and returns its hash
-func WriteTree(ctx context.Context, repoPath string) (*Tree, error) {
+func WriteTree(ctx context.Context, repoPath string) (Tree, error) {
 	result, err := command.NewCommand("write-tree").Run(ctx, command.WithDir(repoPath))
 	if err != nil {
-		return nil, err
+		return Tree{}, err
 	}
 	return NewTree(strings.TrimSpace(result.ReadAsString())), nil
 }
@@ -282,7 +290,7 @@ type CommitTreeOpts struct {
 }
 
 // CommitTree creates a commit from a given tree id for the user with provided message
-func CommitTree(ctx context.Context, repoPath string, tree *Tree, opts CommitTreeOpts) (string, error) {
+func CommitTree(ctx context.Context, repoPath string, tree Tree, opts CommitTreeOpts) (string, error) {
 	cmd := command.NewCommand("commit-tree", tree.Id, "--no-gpg-sign")
 	for _, parent := range opts.Parents {
 		cmd.AddArgs("-p", parent)

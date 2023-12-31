@@ -3,6 +3,7 @@ package cmd
 import (
 	"bufio"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/LeeZXin/zsf-utils/httputil"
@@ -16,7 +17,6 @@ import (
 	"zgit/pkg/git"
 	"zgit/pkg/hook"
 	"zgit/standalone/modules/api/hookapi"
-	"zgit/util"
 )
 
 // subHookPreReceive 可用于仓库大小检查提交权限和分支
@@ -51,21 +51,6 @@ func runPreReceive(c *cli.Context) error {
 	}
 	ctx, cancel := initWaitContext(c.Context)
 	defer cancel()
-	fmt.Println("Welcome to ZGIT")
-	// 获取仓库大小限制
-	repoPath := os.Getenv(git.EnvRepoPath)
-	limitSize, err := getRepoLimitSize(repoPath)
-	if err != nil {
-		return err
-	}
-	repoSize, err := git.GetRepoSize(repoPath)
-	if err != nil {
-		return err
-	}
-	if limitSize < repoSize {
-		fmt.Printf("checking repo size: %s\n", util.VolumeReadable(repoSize))
-		return fmt.Errorf("repo size exceeded limit")
-	}
 	return scanStdinAndDoHttp(ctx, hook.ApiPreReceiveUrl)
 }
 
@@ -73,9 +58,9 @@ func runPreReceive(c *cli.Context) error {
 func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
 	infoList := make([]hookapi.RevInfo, 0)
 	// the environment is set by serv command
-	pusherId := os.Getenv(git.EnvPusherID)
+	pusherId := os.Getenv(git.EnvPusherId)
 	prId := os.Getenv(git.EnvPRID)
-	repoPath := os.Getenv(git.EnvRepoPath)
+	repoId := os.Getenv(git.EnvRepoId)
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := strings.TrimSpace(string(scanner.Bytes()))
@@ -100,7 +85,7 @@ func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
 			RevInfoList: partition,
 			PusherId:    pusherId,
 			PrId:        prId,
-			RepoPath:    repoPath,
+			RepoId:      repoId,
 		}
 		if err := doHttp(ctx, client, reqVO, httpUrl); err != nil {
 			return fmt.Errorf("do internal api failed: %v", err)
@@ -122,7 +107,9 @@ func doHttp(ctx context.Context, client *http.Client, reqVO hookapi.OptsReqVO, u
 	resp := hookapi.HttpRespVO{}
 	err := httputil.Post(ctx, client,
 		fmt.Sprintf("%s/%s", os.Getenv(git.EnvAppUrl), url),
-		nil,
+		map[string]string{
+			"Authorization": "",
+		},
 		reqVO,
 		&resp)
 	if err != nil {
@@ -141,11 +128,10 @@ func newHttpClient() *http.Client {
 			MaxIdleConns:        0, // 禁用连接池
 			MaxIdleConnsPerHost: 0, // 禁用连接池
 			IdleConnTimeout:     0, // 禁用连接池
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
 		},
 		Timeout: 5 * time.Second,
 	}
-}
-
-func getRepoLimitSize(repoPath string) (int64, error) {
-	return 1 * util.Gib, nil
 }

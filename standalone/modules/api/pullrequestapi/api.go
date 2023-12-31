@@ -16,25 +16,27 @@ func InitApi() {
 	httpserver.AppendRegisterRouterFunc(func(e *gin.Engine) {
 		group := e.Group("/api/pullRequest", apicommon.CheckLogin)
 		{
-			// 创建合并请求信息展示
-			group.POST("/prepare", preparePullRequest)
+			// 提交差异
+			group.POST("/diffCommits", diffCommits)
 			// 展示提交文件差异
-			group.POST("/diff", diff)
+			group.POST("/diffFile", diffFile)
 			// 展示文件内容
 			group.POST("/catFile", catFile)
 			// 创建合并请求
-			group.POST("/insert")
+			group.POST("/submit", submitPullRequest)
 			// 关闭合并请求
-			group.POST("/close")
+			group.POST("/close", closePullRequest)
+			// merge合并请求
+			group.POST("/merge", mergePullRequest)
 		}
 	})
 }
 
-func diff(c *gin.Context) {
-	var req DiffReqVO
+func diffFile(c *gin.Context) {
+	var req DiffFileReqVO
 	if util.ShouldBindJSON(&req, c) {
-		respDTO, err := pullrequestsrv.Diff(c.Request.Context(), pullrequestsrv.DiffReqDTO{
-			RepoPath: req.RepoPath,
+		respDTO, err := pullrequestsrv.DiffFile(c.Request.Context(), pullrequestsrv.DiffFileReqDTO{
+			RepoId:   req.RepoId,
 			Target:   req.Target,
 			Head:     req.Head,
 			FileName: req.FileName,
@@ -44,7 +46,7 @@ func diff(c *gin.Context) {
 			util.HandleApiErr(err, c)
 			return
 		}
-		ret := DiffRespVO{
+		ret := DiffFileRespVO{
 			FilePath:    respDTO.FilePath,
 			OldMode:     respDTO.OldMode,
 			Mode:        respDTO.Mode,
@@ -69,11 +71,11 @@ func diff(c *gin.Context) {
 	}
 }
 
-func preparePullRequest(c *gin.Context) {
-	var req PreparePullRequestReqVO
+func diffCommits(c *gin.Context) {
+	var req PrepareMergeReqVO
 	if util.ShouldBindJSON(&req, c) {
-		respDTO, err := pullrequestsrv.PreparePullRequest(c.Request.Context(), pullrequestsrv.PreparePullRequestReqDTO{
-			RepoPath: req.RepoPath,
+		respDTO, err := pullrequestsrv.DiffCommits(c.Request.Context(), pullrequestsrv.DiffCommitsReqDTO{
+			RepoId:   req.RepoId,
 			Target:   req.Target,
 			Head:     req.Head,
 			Operator: apicommon.MustGetLoginUser(c),
@@ -82,7 +84,7 @@ func preparePullRequest(c *gin.Context) {
 			util.HandleApiErr(err, c)
 			return
 		}
-		respVO := PreparePullRequestRespVO{
+		respVO := PrepareMergeRespVO{
 			BaseResp:     ginutil.DefaultSuccessResp,
 			Target:       respDTO.Target,
 			Head:         respDTO.Head,
@@ -94,6 +96,8 @@ func preparePullRequest(c *gin.Context) {
 				InsertNums:     respDTO.DiffNumsStats.InsertNums,
 				DeleteNums:     respDTO.DiffNumsStats.DeleteNums,
 			},
+			ConflictFiles: respDTO.ConflictFiles,
+			CanMerge:      respDTO.CanMerge,
 		}
 		respVO.Commits, _ = listutil.Map(respDTO.Commits, func(t pullrequestsrv.CommitDTO) (CommitVO, error) {
 			return commitDto2Vo(t), nil
@@ -108,6 +112,53 @@ func preparePullRequest(c *gin.Context) {
 			}, nil
 		})
 		c.JSON(http.StatusOK, respVO)
+	}
+}
+
+func submitPullRequest(c *gin.Context) {
+	var req SubmitPullRequestReqVO
+	if util.ShouldBindJSON(&req, c) {
+		err := pullrequestsrv.SubmitPullRequest(c.Request.Context(), pullrequestsrv.SubmitPullRequestReqDTO{
+			RepoId:   req.RepoId,
+			Target:   req.Target,
+			Head:     req.Head,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		c.JSON(http.StatusOK, ginutil.DefaultSuccessResp)
+	}
+}
+
+func closePullRequest(c *gin.Context) {
+	var req ClosePullRequestReqVO
+	if util.ShouldBindJSON(&req, c) {
+		err := pullrequestsrv.ClosePullRequest(c.Request.Context(), pullrequestsrv.ClosePullRequestReqDTO{
+			PrId:     req.PrId,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		c.JSON(http.StatusOK, ginutil.DefaultSuccessResp)
+	}
+}
+
+func mergePullRequest(c *gin.Context) {
+	var req MergePullRequestReqVO
+	if util.ShouldBindJSON(&req, c) {
+		err := pullrequestsrv.MergePullRequest(c.Request.Context(), pullrequestsrv.MergePullRequestReqDTO{
+			PrId:     req.PrId,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		c.JSON(http.StatusOK, ginutil.DefaultSuccessResp)
 	}
 }
 
@@ -127,7 +178,7 @@ func catFile(c *gin.Context) {
 	var req CatFileReqVO
 	if util.ShouldBindJSON(&req, c) {
 		lines, err := pullrequestsrv.CatFile(c.Request.Context(), pullrequestsrv.CatFileReqDTO{
-			RepoPath:  req.RepoPath,
+			RepoId:    req.RepoId,
 			CommitId:  req.CommitId,
 			FileName:  req.FileName,
 			Offset:    req.Offset,

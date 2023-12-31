@@ -1,7 +1,7 @@
 package branchmd
 
 type ListProtectedBranchReqDTO struct {
-	RepoPath   string
+	RepoId     string
 	SearchName string
 	Offset     int64
 	Limit      int

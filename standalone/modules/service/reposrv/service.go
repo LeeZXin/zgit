@@ -41,7 +41,7 @@ func EntriesRepo(ctx context.Context, reqDTO EntriesRepoReqDTO) (TreeDTO, error)
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	repo, err := checkAuth(ctx, reqDTO.RepoPath, reqDTO.Operator)
+	repo, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
 	if err != nil {
 		return TreeDTO{}, err
 	}
@@ -104,10 +104,10 @@ func CatFile(ctx context.Context, reqDTO CatFileReqDTO) (git.FileMode, string, e
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	if _, err := checkAuth(ctx, reqDTO.RepoPath, reqDTO.Operator); err != nil {
+	if _, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator); err != nil {
 		return "", "", err
 	}
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoPath)
+	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoId)
 	fileMode, content, _, err := git.GetFileContentByRef(ctx, absPath, reqDTO.RefName, reqDTO.FileName)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
@@ -123,7 +123,7 @@ func TreeRepo(ctx context.Context, reqDTO TreeRepoReqDTO) (TreeRepoRespDTO, erro
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	repo, err := checkAuth(ctx, reqDTO.RepoPath, reqDTO.Operator)
+	repo, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
 	if err != nil {
 		return TreeRepoRespDTO{}, err
 	}
@@ -134,7 +134,7 @@ func TreeRepo(ctx context.Context, reqDTO TreeRepoReqDTO) (TreeRepoRespDTO, erro
 	if reqDTO.Dir == "" {
 		reqDTO.Dir = "."
 	}
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoPath)
+	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoId)
 	commit, err := git.GetFileLastCommit(ctx, absPath, reqDTO.RefName, reqDTO.Dir)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
@@ -310,13 +310,13 @@ func DeleteRepo(ctx context.Context, reqDTO DeleteRepoReqDTO) error {
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	repo, err := checkAuth(ctx, reqDTO.RepoPath, reqDTO.Operator)
+	repo, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
 	if err != nil {
 		return err
 	}
 	// 如果不是系统管理员 检查仓库管理员权限
 	if !reqDTO.Operator.IsAdmin {
-		b, err := repomd.CheckRepoUserExists(ctx, reqDTO.RepoPath, reqDTO.Operator.Account, repomd.Maintainer)
+		b, err := repomd.CheckRepoUserExists(ctx, reqDTO.RepoId, reqDTO.Operator.Account, repomd.Maintainer)
 		if err != nil {
 			logger.Logger.WithContext(ctx).Error(err)
 			return util.InternalError()
@@ -326,7 +326,7 @@ func DeleteRepo(ctx context.Context, reqDTO DeleteRepoReqDTO) error {
 		}
 	}
 	// 拼接绝对路径
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoPath)
+	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoId)
 	logger.Logger.WithContext(ctx).Infof("user: %s delete repo: %s", reqDTO.Operator.Account, absPath)
 	if err := mysqlstore.WithTx(ctx, func(ctx context.Context) error {
 		_, err := repomd.DeleteRepo(ctx, repo)
@@ -357,10 +357,10 @@ func AllBranches(ctx context.Context, reqDTO AllBranchesReqDTO) ([]string, error
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	// 校验权限
-	if _, err := checkAuth(ctx, reqDTO.RepoPath, reqDTO.Operator); err != nil {
+	if _, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator); err != nil {
 		return nil, err
 	}
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoPath)
+	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoId)
 	branchList, err := git.GetAllBranchList(ctx, absPath)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
@@ -377,10 +377,10 @@ func AllTags(ctx context.Context, reqDTO AllTagsReqDTO) ([]string, error) {
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	// 校验权限
-	if _, err := checkAuth(ctx, reqDTO.RepoPath, reqDTO.Operator); err != nil {
+	if _, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator); err != nil {
 		return nil, err
 	}
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoPath)
+	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoId)
 	tagList, err := git.GetAllTagList(ctx, absPath)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
@@ -389,8 +389,8 @@ func AllTags(ctx context.Context, reqDTO AllTagsReqDTO) ([]string, error) {
 	return tagList, nil
 }
 
-func checkAuth(ctx context.Context, repoPath string, operator usermd.UserInfo) (repomd.Repo, error) {
-	repo, b, err := repomd.GetByPath(ctx, repoPath)
+func checkPerm(ctx context.Context, repoId string, operator usermd.UserInfo) (repomd.Repo, error) {
+	repo, b, err := repomd.GetByRepoId(ctx, repoId)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
 		return repomd.Repo{}, util.InternalError()
@@ -406,7 +406,7 @@ func checkAuth(ctx context.Context, repoPath string, operator usermd.UserInfo) (
 	if !b {
 		return repomd.Repo{}, util.UnauthorizedError()
 	}
-	b, err = repomd.CheckRepoUserExists(ctx, repoPath, operator.Account, repomd.Guest, repomd.Maintainer, repomd.Developer)
+	b, err = repomd.CheckRepoUserExists(ctx, repoId, operator.Account, repomd.Guest, repomd.Maintainer, repomd.Developer)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
 		return repomd.Repo{}, util.InternalError()

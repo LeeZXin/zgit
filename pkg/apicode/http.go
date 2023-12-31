@@ -18,6 +18,7 @@ const (
 	UnauthorizedCode
 	UnimplementedCode
 	UserAlreadyExistsCode
+	PullRequestCannotMergeCode
 )
 
 func (c Code) Int() int {

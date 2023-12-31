@@ -107,7 +107,6 @@ func CountObjects(ctx context.Context, repoPath string) (int64, float64, error) 
 	}
 	line := result.ReadAsString()
 	fields := strings.Fields(strings.TrimSpace(line))
-	fmt.Println(line, repoPath)
 	if len(fields) != 4 {
 		return 0, 0, errors.New("unknown count-objects output")
 	}

@@ -84,6 +84,15 @@ const (
 	RepoUnknownUser    Key = "repo.unknownUser"
 )
 
+const (
+	PullRequestCannotMerge   Key = "pullRequest.cannotMerge"
+	PullRequestOpenStatus    Key = "pullRequest.openStatus"
+	PullRequestClosedStatus  Key = "pullRequest.closedStatus"
+	PullRequestMergedStatus  Key = "pullRequest.mergedStatus"
+	PullRequestUnknownStatus Key = "pullRequest.unknownStatus"
+	PullRequestMergeMessage  Key = "pullRequest.mergeMessage"
+)
+
 var (
 	defaultRetMap = map[Key]string{
 		SystemInternalError: "系统异常",
@@ -145,6 +154,13 @@ var (
 		RepoCodeReviewer:   "代码评审员",
 		RepoProhibitedUser: "禁止访问",
 		RepoUnknownUser:    "未知类型",
+
+		PullRequestCannotMerge:   "无法合并",
+		PullRequestOpenStatus:    "已打开",
+		PullRequestClosedStatus:  "已关闭",
+		PullRequestMergedStatus:  "已合并",
+		PullRequestUnknownStatus: "未知",
+		PullRequestMergeMessage:  "合并请求: %s, 申请人: %s, 合并人: %s",
 	}
 )
 

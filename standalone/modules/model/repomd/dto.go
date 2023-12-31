@@ -50,6 +50,7 @@ func (t RepoType) IsValid() bool {
 }
 
 type RepoInfo struct {
+	RepoId    string `json:"repoId"`
 	Name      string `json:"name"`
 	Path      string `json:"path"`
 	Author    string `json:"author"`

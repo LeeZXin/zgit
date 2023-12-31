@@ -108,7 +108,7 @@ func GetFilesDiffCount(ctx context.Context, repoPath, target, head string) (int,
 	return bytes.Count(result.ReadAsBytes(), EndBytesFlag), nil
 }
 
-func GenDiffNumsStat(ctx context.Context, repoPath, target, head string) (DiffNumsStatInfo, error) {
+func GetDiffNumsStat(ctx context.Context, repoPath, target, head string) (DiffNumsStatInfo, error) {
 	pipeResult := command.NewCommand("diff", "--numstat", target+".."+head, "--").RunWithReadPipe(ctx, command.WithDir(repoPath))
 	ret := make([]DiffNumsStat, 0)
 	insertNumsTotal := 0

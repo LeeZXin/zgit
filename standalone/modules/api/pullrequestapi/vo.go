@@ -5,14 +5,20 @@ import (
 	"zgit/pkg/git"
 )
 
-type PreparePullRequestReqVO struct {
-	RepoPath string `json:"repoPath"`
-	Target   string `json:"target"`
-	Head     string `json:"head"`
+type PrepareMergeReqVO struct {
+	RepoId string `json:"repoId"`
+	Target string `json:"target"`
+	Head   string `json:"head"`
 }
 
-type DiffReqVO struct {
-	RepoPath string `json:"repoPath"`
+type SubmitPullRequestReqVO struct {
+	RepoId string `json:"repoId"`
+	Target string `json:"target"`
+	Head   string `json:"head"`
+}
+
+type DiffFileReqVO struct {
+	RepoId   string `json:"repoId"`
 	Target   string `json:"target"`
 	Head     string `json:"head"`
 	FileName string `json:"fileName"`
@@ -28,7 +34,7 @@ type CommitVO struct {
 	ShortId       string
 }
 
-type PreparePullRequestRespVO struct {
+type PrepareMergeRespVO struct {
 	ginutil.BaseResp
 	Target        string             `json:"target"`
 	Head          string             `json:"head"`
@@ -37,6 +43,8 @@ type PreparePullRequestRespVO struct {
 	Commits       []CommitVO         `json:"commits"`
 	NumFiles      int                `json:"numFiles"`
 	DiffNumsStats DiffNumsStatInfoVO `json:"diffNumsStats"`
+	ConflictFiles []string           `json:"conflictFiles"`
+	CanMerge      bool               `json:"canMerge"`
 }
 
 type DiffNumsStatInfoVO struct {
@@ -54,7 +62,7 @@ type DiffNumsStatVO struct {
 	DeleteNums int    `json:"deleteNums"`
 }
 
-type DiffRespVO struct {
+type DiffFileRespVO struct {
 	FilePath    string       `json:"filePath"`
 	OldMode     string       `json:"oldMode"`
 	Mode        string       `json:"mode"`
@@ -77,7 +85,7 @@ type DiffLineVO struct {
 }
 
 type CatFileReqVO struct {
-	RepoPath  string `json:"repoPath"`
+	RepoId    string `json:"repoId"`
 	CommitId  string `json:"commitId"`
 	FileName  string `json:"fileName"`
 	Offset    int    `json:"offset"`
@@ -87,5 +95,13 @@ type CatFileReqVO struct {
 
 type CatFileRespVO struct {
 	ginutil.BaseResp
-	Lines []DiffLineVO
+	Lines []DiffLineVO `json:"lines"`
+}
+
+type ClosePullRequestReqVO struct {
+	PrId string `json:"prId"`
+}
+
+type MergePullRequestReqVO struct {
+	PrId string `json:"prId"`
 }

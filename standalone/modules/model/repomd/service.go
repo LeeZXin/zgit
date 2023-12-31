@@ -2,8 +2,13 @@ package repomd
 
 import (
 	"context"
+	"github.com/LeeZXin/zsf-utils/idutil"
 	"github.com/LeeZXin/zsf/xorm/xormutil"
 )
+
+func GenRepoId() string {
+	return idutil.RandomUuid()
+}
 
 func GetByPath(ctx context.Context, path string) (Repo, bool, error) {
 	var ret Repo
@@ -11,8 +16,14 @@ func GetByPath(ctx context.Context, path string) (Repo, bool, error) {
 	return ret, b, err
 }
 
-func UpdateTotalAndGitSize(ctx context.Context, path string, totalSize, gitSize int64) error {
-	_, err := xormutil.MustGetXormSession(ctx).Where("path = ?", path).
+func GetByRepoId(ctx context.Context, repoId string) (Repo, bool, error) {
+	var ret Repo
+	b, err := xormutil.MustGetXormSession(ctx).Where("repo_id = ?", repoId).Get(&ret)
+	return ret, b, err
+}
+
+func UpdateTotalAndGitSize(ctx context.Context, repoId string, totalSize, gitSize int64) error {
+	_, err := xormutil.MustGetXormSession(ctx).Where("repo_id = ?", repoId).
 		Cols("total_size", "git_size").
 		Limit(1).
 		Update(&Repo{
@@ -45,8 +56,8 @@ func CountRepo(ctx context.Context, projectId, searchName string) (int64, error)
 	return session.Count(new(Repo))
 }
 
-func UpdateIsEmpty(ctx context.Context, path string, isEmpty bool) error {
-	_, err := xormutil.MustGetXormSession(ctx).Where("path = ?", path).
+func UpdateIsEmpty(ctx context.Context, repoId string, isEmpty bool) error {
+	_, err := xormutil.MustGetXormSession(ctx).Where("repo_id = ?", repoId).
 		Cols("is_empty").
 		Limit(1).
 		Update(&Repo{
@@ -57,6 +68,7 @@ func UpdateIsEmpty(ctx context.Context, path string, isEmpty bool) error {
 
 func InsertRepo(ctx context.Context, reqDTO InsertRepoReqDTO) (Repo, error) {
 	r := Repo{
+		RepoId:        GenRepoId(),
 		Name:          reqDTO.Name,
 		Path:          reqDTO.Path,
 		Author:        reqDTO.Author,
@@ -74,13 +86,13 @@ func InsertRepo(ctx context.Context, reqDTO InsertRepoReqDTO) (Repo, error) {
 }
 
 func DeleteRepo(ctx context.Context, repo Repo) (bool, error) {
-	rows, err := xormutil.MustGetXormSession(ctx).Where("path = ?", repo.Path).Delete(new(Repo))
+	rows, err := xormutil.MustGetXormSession(ctx).Where("repo_id = ?", repo.RepoId).Delete(new(Repo))
 	return rows == 1, err
 }
 
-func InsertRepoUser(ctx context.Context, repoPath, account string, manageType ManageType) (RepoManage, error) {
+func InsertRepoUser(ctx context.Context, repoId, account string, manageType ManageType) (RepoManage, error) {
 	ret := RepoManage{
-		RepoPath:   repoPath,
+		RepoId:     repoId,
 		Account:    account,
 		ManageType: manageType.Int(),
 	}
@@ -88,9 +100,9 @@ func InsertRepoUser(ctx context.Context, repoPath, account string, manageType Ma
 	return ret, err
 }
 
-func DeleteRepoUser(ctx context.Context, repoPath, account string, manageType ManageType) (bool, error) {
+func DeleteRepoUser(ctx context.Context, repoId, account string, manageType ManageType) (bool, error) {
 	rows, err := xormutil.MustGetXormSession(ctx).
-		Where("repo_path = ?", repoPath).
+		Where("repo_id = ?", repoId).
 		And("account = ?", account).
 		And("manage_type = ?", manageType.Int()).
 		Limit(1).
@@ -98,9 +110,9 @@ func DeleteRepoUser(ctx context.Context, repoPath, account string, manageType Ma
 	return rows == 1, err
 }
 
-func CheckRepoUserExists(ctx context.Context, repoPath, account string, typeList ...ManageType) (bool, error) {
+func CheckRepoUserExists(ctx context.Context, repoId, account string, typeList ...ManageType) (bool, error) {
 	return xormutil.MustGetXormSession(ctx).
-		Where("repo_path = ?", repoPath).
+		Where("repo_id = ?", repoId).
 		And("account = ?", account).
 		In("manage_type", typeList).
 		Exist(new(RepoManage))

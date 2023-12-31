@@ -11,12 +11,12 @@ var (
 )
 
 type MetaObject struct {
-	Id       int64     `json:"id"`
-	RepoPath string    `json:"repoPath"`
-	Oid      string    `json:"oid"`
-	Size     int64     `json:"size"`
-	Created  time.Time `json:"created" xorm:"created"`
-	Updated  time.Time `json:"updated" xorm:"updated"`
+	Id      int64     `json:"id"`
+	RepoId  string    `json:"repoId"`
+	Oid     string    `json:"oid"`
+	Size    int64     `json:"size"`
+	Created time.Time `json:"created" xorm:"created"`
+	Updated time.Time `json:"updated" xorm:"updated"`
 }
 
 func (*MetaObject) TableName() string {

@@ -2,42 +2,48 @@ package pullrequestsrv
 
 import (
 	"context"
+	"fmt"
+	"github.com/LeeZXin/zsf-utils/bizerr"
 	"github.com/LeeZXin/zsf-utils/listutil"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/xorm/mysqlstore"
 	"path"
 	"path/filepath"
+	"zgit/pkg/apicode"
 	"zgit/pkg/git"
+	"zgit/pkg/i18n"
 	"zgit/setting"
 	"zgit/standalone/modules/model/projectmd"
+	"zgit/standalone/modules/model/pullrequestmd"
 	"zgit/standalone/modules/model/repomd"
 	"zgit/standalone/modules/model/usermd"
 	"zgit/util"
 )
 
-func PreparePullRequest(ctx context.Context, reqDTO PreparePullRequestReqDTO) (PreparePullRequestRespDTO, error) {
+func DiffCommits(ctx context.Context, reqDTO DiffCommitsReqDTO) (DiffCommitsRespDTO, error) {
 	if err := reqDTO.IsValid(); err != nil {
-		return PreparePullRequestRespDTO{}, err
+		return DiffCommitsRespDTO{}, err
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	// 校验权限
-	if err := checkPerm(ctx, reqDTO.RepoPath, reqDTO.Operator); err != nil {
-		return PreparePullRequestRespDTO{}, err
+	repo, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	if err != nil {
+		return DiffCommitsRespDTO{}, err
 	}
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoPath)
-	if !git.CheckRefIsBranch(ctx, absPath, reqDTO.Head) {
-		return PreparePullRequestRespDTO{}, util.InvalidArgsError()
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
+	if !git.CheckExists(ctx, absPath, reqDTO.Head) {
+		return DiffCommitsRespDTO{}, util.InvalidArgsError()
 	}
 	if !git.CheckExists(ctx, absPath, reqDTO.Target) {
-		return PreparePullRequestRespDTO{}, util.InvalidArgsError()
+		return DiffCommitsRespDTO{}, util.InvalidArgsError()
 	}
-	info, err := git.PreparePullRequest(ctx, absPath, reqDTO.Target, reqDTO.Head)
+	info, err := git.GetDiffCommitsInfo(ctx, absPath, reqDTO.Target, reqDTO.Head)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return PreparePullRequestRespDTO{}, util.InternalError()
+		return DiffCommitsRespDTO{}, util.InternalError()
 	}
-	ret := PreparePullRequestRespDTO{
+	ret := DiffCommitsRespDTO{
 		Target:       info.Target,
 		Head:         info.Head,
 		TargetCommit: commit2Dto(info.TargetCommit),
@@ -48,6 +54,7 @@ func PreparePullRequest(ctx context.Context, reqDTO PreparePullRequestReqDTO) (P
 			InsertNums:     info.DiffNumsStats.InsertNums,
 			DeleteNums:     info.DiffNumsStats.DeleteNums,
 		},
+		ConflictFiles: info.ConflictFiles,
 	}
 	ret.DiffNumsStats.Stats, _ = listutil.Map(info.DiffNumsStats.Stats, func(t git.DiffNumsStat) (DiffNumsStatDTO, error) {
 		return DiffNumsStatDTO{
@@ -61,32 +68,164 @@ func PreparePullRequest(ctx context.Context, reqDTO PreparePullRequestReqDTO) (P
 	ret.Commits, _ = listutil.Map(info.Commits, func(t git.Commit) (CommitDTO, error) {
 		return commit2Dto(t), nil
 	})
+	ret.CanMerge = len(ret.Commits) > 0 && len(ret.ConflictFiles) == 0
 	return ret, nil
 }
 
-func Diff(ctx context.Context, reqDTO DiffReqDTO) (DiffRespDTO, error) {
+func SubmitPullRequest(ctx context.Context, reqDTO SubmitPullRequestReqDTO) error {
 	if err := reqDTO.IsValid(); err != nil {
-		return DiffRespDTO{}, err
+		return err
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	// 校验权限
-	if err := checkPerm(ctx, reqDTO.RepoPath, reqDTO.Operator); err != nil {
-		return DiffRespDTO{}, err
+	repo, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	if err != nil {
+		return err
 	}
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoPath)
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
+	if !git.CheckRefIsBranch(ctx, absPath, reqDTO.Head) {
+		return util.InvalidArgsError()
+	}
 	if !git.CheckExists(ctx, absPath, reqDTO.Target) {
-		return DiffRespDTO{}, util.InvalidArgsError()
+		return util.InvalidArgsError()
+	}
+	info, err := git.GetDiffCommitsInfo(ctx, absPath, reqDTO.Target, reqDTO.Head)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	// 可合并提交为0
+	if len(info.Commits) == 0 || len(info.ConflictFiles) > 0 {
+		return bizerr.NewBizErr(apicode.PullRequestCannotMergeCode.Int(), i18n.GetByKey(i18n.PullRequestCannotMerge))
+	}
+	_, err = pullrequestmd.InsertPullRequest(ctx, pullrequestmd.InsertPullRequestReqDTO{
+		RepoId:   reqDTO.RepoId,
+		Target:   reqDTO.Target,
+		Head:     reqDTO.Head,
+		CreateBy: reqDTO.Operator.Account,
+		PrStatus: pullrequestmd.PrOpenStatus,
+	})
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	return nil
+}
+
+func ClosePullRequest(ctx context.Context, reqDTO ClosePullRequestReqDTO) error {
+	if err := reqDTO.IsValid(); err != nil {
+		return err
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	pr, b, err := pullrequestmd.GetByPrId(ctx, reqDTO.PrId)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	if !b {
+		return util.InvalidArgsError()
+	}
+	// 只允许从open -> closed
+	if pr.PrStatus != pullrequestmd.PrOpenStatus.Int() {
+		return util.InvalidArgsError()
+	}
+	// 校验权限
+	if _, err = checkPerm(ctx, pr.RepoId, reqDTO.Operator); err != nil {
+		return err
+	}
+	_, err = pullrequestmd.UpdatePrStatus(ctx, reqDTO.PrId, pullrequestmd.PrOpenStatus, pullrequestmd.PrClosedStatus)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	return nil
+}
+
+func MergePullRequest(ctx context.Context, reqDTO MergePullRequestReqDTO) error {
+	if err := reqDTO.IsValid(); err != nil {
+		return err
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	pr, b, err := pullrequestmd.GetByPrId(ctx, reqDTO.PrId)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	if !b {
+		return util.InvalidArgsError()
+	}
+	// 只允许从open -> closed
+	if pr.PrStatus != pullrequestmd.PrOpenStatus.Int() {
+		return util.InvalidArgsError()
+	}
+	// 校验权限
+	repo, err := checkPerm(ctx, pr.RepoId, reqDTO.Operator)
+	if err != nil {
+		return err
+	}
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
+	info, err := git.GetDiffCommitsInfo(ctx, absPath, pr.Target, pr.Head)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	// 可合并提交为0
+	if len(info.Commits) == 0 || len(info.ConflictFiles) > 0 {
+		return bizerr.NewBizErr(apicode.PullRequestCannotMergeCode.Int(), i18n.GetByKey(i18n.PullRequestCannotMerge))
+	}
+	return mysqlstore.WithTx(ctx, func(ctx context.Context) error {
+		b, err = pullrequestmd.UpdatePrStatusAndCommitId(
+			ctx,
+			pr.PrId,
+			pullrequestmd.PrOpenStatus,
+			pullrequestmd.PrMergedStatus,
+			info.TargetCommit.Id,
+			info.HeadCommit.Id,
+		)
+		if err != nil {
+			logger.Logger.WithContext(ctx).Error(err)
+			return util.InternalError()
+		}
+		if b {
+			err = git.Merge(ctx, absPath, pr.Target, pr.Head, info, git.MergeRepoOpts{
+				Message: fmt.Sprintf(i18n.GetByKey(i18n.PullRequestMergeMessage), pr.PrId, pr.CreateBy, reqDTO.Operator.Account),
+			})
+			if err != nil {
+				logger.Logger.WithContext(ctx).Error(err)
+				return util.InternalError()
+			}
+		}
+		return nil
+	})
+}
+
+func DiffFile(ctx context.Context, reqDTO DiffFileReqDTO) (DiffFileRespDTO, error) {
+	if err := reqDTO.IsValid(); err != nil {
+		return DiffFileRespDTO{}, err
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	// 校验权限
+	repo, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	if err != nil {
+		return DiffFileRespDTO{}, err
+	}
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
+	if !git.CheckExists(ctx, absPath, reqDTO.Target) {
+		return DiffFileRespDTO{}, util.InvalidArgsError()
 	}
 	if !git.CheckExists(ctx, absPath, reqDTO.Head) {
-		return DiffRespDTO{}, util.InvalidArgsError()
+		return DiffFileRespDTO{}, util.InvalidArgsError()
 	}
 	d, err := git.GetDiffFileDetail(ctx, absPath, reqDTO.Target, reqDTO.Head, reqDTO.FileName)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return DiffRespDTO{}, err
+		return DiffFileRespDTO{}, err
 	}
-	ret := DiffRespDTO{
+	ret := DiffFileRespDTO{
 		FilePath:    d.FilePath,
 		OldMode:     d.OldMode,
 		Mode:        d.Mode,
@@ -129,10 +268,11 @@ func CatFile(ctx context.Context, reqDTO CatFileReqDTO) ([]DiffLineDTO, error) {
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	// 校验权限
-	if err := checkPerm(ctx, reqDTO.RepoPath, reqDTO.Operator); err != nil {
+	repo, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	if err != nil {
 		return nil, err
 	}
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoPath)
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
 	if !git.CheckRefIsCommit(ctx, absPath, reqDTO.CommitId) {
 		return nil, util.InvalidArgsError()
 	}
@@ -168,29 +308,30 @@ func CatFile(ctx context.Context, reqDTO CatFileReqDTO) ([]DiffLineDTO, error) {
 	return ret, nil
 }
 
-func checkPerm(ctx context.Context, repoPath string, operator usermd.UserInfo) error {
-	repo, b, err := repomd.GetByPath(ctx, repoPath)
+func checkPerm(ctx context.Context, repoId string, operator usermd.UserInfo) (repomd.Repo, error) {
+	repo, b, err := repomd.GetByRepoId(ctx, repoId)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return util.InternalError()
+		return repomd.Repo{}, util.InternalError()
 	}
 	if !b {
-		return util.InvalidArgsError()
+		return repomd.Repo{}, util.InvalidArgsError()
 	}
 	b, err = projectmd.ProjectUserExists(ctx, repo.ProjectId, operator.Account)
 	if err != nil {
-		return err
+		logger.Logger.WithContext(ctx).Error(err)
+		return repomd.Repo{}, util.InternalError()
 	}
 	if !b {
-		return util.UnauthorizedError()
+		return repomd.Repo{}, util.UnauthorizedError()
 	}
-	b, err = repomd.CheckRepoUserExists(ctx, repoPath, operator.Account, repomd.Maintainer, repomd.Developer)
+	b, err = repomd.CheckRepoUserExists(ctx, repoId, operator.Account, repomd.Maintainer, repomd.Developer)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return util.InternalError()
+		return repomd.Repo{}, util.InternalError()
 	}
 	if !b {
-		return util.InvalidArgsError()
+		return repomd.Repo{}, util.InvalidArgsError()
 	}
-	return nil
+	return repo, nil
 }

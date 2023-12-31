@@ -47,7 +47,7 @@ func (r *InitRepoReqDTO) IsValid() error {
 }
 
 type DeleteRepoReqDTO struct {
-	RepoPath string
+	RepoId   string
 	Operator usermd.UserInfo
 }
 
@@ -55,14 +55,14 @@ func (r *DeleteRepoReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
 		return util.InvalidArgsError()
 	}
 	return nil
 }
 
 type TreeRepoReqDTO struct {
-	RepoPath string
+	RepoId   string
 	RefName  string
 	Dir      string
 	Operator usermd.UserInfo
@@ -72,7 +72,7 @@ func (r *TreeRepoReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
 		return util.InvalidArgsError()
 	}
 	if len(r.RefName) > 128 || len(r.RefName) == 0 {
@@ -85,7 +85,7 @@ func (r *TreeRepoReqDTO) IsValid() error {
 }
 
 type CatFileReqDTO struct {
-	RepoPath string
+	RepoId   string
 	RefName  string
 	Dir      string
 	FileName string
@@ -96,7 +96,7 @@ func (r *CatFileReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
 		return util.InvalidArgsError()
 	}
 	if len(r.RefName) > 128 || len(r.RefName) == 0 {
@@ -115,7 +115,7 @@ func (r *CatFileReqDTO) IsValid() error {
 }
 
 type EntriesRepoReqDTO struct {
-	RepoPath string
+	RepoId   string
 	RefName  string
 	Dir      string
 	Offset   int
@@ -126,7 +126,7 @@ func (r *EntriesRepoReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
 		return util.InvalidArgsError()
 	}
 	if r.RefName == "" {
@@ -213,7 +213,7 @@ type RepoTypeDTO struct {
 }
 
 type AllBranchesReqDTO struct {
-	RepoPath string
+	RepoId   string
 	Operator usermd.UserInfo
 }
 
@@ -221,14 +221,14 @@ func (r *AllBranchesReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
 		return util.InvalidArgsError()
 	}
 	return nil
 }
 
 type AllTagsReqDTO struct {
-	RepoPath string
+	RepoId   string
 	Operator usermd.UserInfo
 }
 
@@ -236,7 +236,7 @@ func (r *AllTagsReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
 		return util.InvalidArgsError()
 	}
 	return nil

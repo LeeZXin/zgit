@@ -3,7 +3,6 @@ package userapi
 import "github.com/LeeZXin/zsf-utils/ginutil"
 
 type LoginReqVO struct {
-	CorpId   string `json:"corpId"`
 	Account  string `json:"account"`
 	Password string `json:"password"`
 }

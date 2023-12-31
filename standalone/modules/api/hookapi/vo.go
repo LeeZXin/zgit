@@ -10,7 +10,7 @@ type RevInfo struct {
 
 type OptsReqVO struct {
 	RevInfoList []RevInfo `json:"revInfoList"`
-	RepoPath    string    `json:"repoPath"`
+	RepoId      string    `json:"repoPath"`
 	PrId        string    `json:"prId"`
 	PusherId    string    `json:"pusherId"`
 }

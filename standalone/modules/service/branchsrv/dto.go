@@ -7,7 +7,7 @@ import (
 )
 
 type InsertProtectedBranchReqDTO struct {
-	RepoPath string
+	RepoId   string
 	Branch   string
 	Operator usermd.UserInfo
 }
@@ -19,14 +19,14 @@ func (r *InsertProtectedBranchReqDTO) IsValid() error {
 	if len(r.Branch) > 32 || len(r.Branch) == 0 {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
 		return util.InvalidArgsError()
 	}
 	return nil
 }
 
 type DeleteProtectedBranchReqDTO struct {
-	RepoPath string
+	RepoId   string
 	Branch   string
 	Operator usermd.UserInfo
 }
@@ -38,14 +38,14 @@ func (r *DeleteProtectedBranchReqDTO) IsValid() error {
 	if len(r.Branch) > 32 || len(r.Branch) == 0 {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
 		return util.InvalidArgsError()
 	}
 	return nil
 }
 
 type ListProtectedBranchReqDTO struct {
-	RepoPath   string
+	RepoId     string
 	SearchName string
 	Offset     int64
 	Limit      int
@@ -62,7 +62,7 @@ func (r *ListProtectedBranchReqDTO) IsValid() error {
 	if r.Limit < 0 || r.Limit > 1000 {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
 		return util.InvalidArgsError()
 	}
 	if len(r.SearchName) > 255 {

@@ -7,8 +7,8 @@ import (
 
 func InsertProtectedBranch(ctx context.Context, repoPath, branch string) (ProtectedBranch, error) {
 	ret := ProtectedBranch{
-		Branch:   branch,
-		RepoPath: repoPath,
+		Branch: branch,
+		RepoId: repoPath,
 	}
 	_, err := xormutil.MustGetXormSession(ctx).Insert(&ret)
 	return ret, err
@@ -16,7 +16,7 @@ func InsertProtectedBranch(ctx context.Context, repoPath, branch string) (Protec
 
 func DeleteProtectedBranch(ctx context.Context, branch ProtectedBranch) (bool, error) {
 	rows, err := xormutil.MustGetXormSession(ctx).
-		Where("repo_path = ?", branch.RepoPath).
+		Where("repo_id = ?", branch.RepoId).
 		And("branch = ?", branch.Branch).
 		Limit(1).
 		Delete(new(ProtectedBranch))
@@ -26,7 +26,7 @@ func DeleteProtectedBranch(ctx context.Context, branch ProtectedBranch) (bool, e
 func GetProtectedBranch(ctx context.Context, repoPath, branch string) (ProtectedBranch, bool, error) {
 	ret := ProtectedBranch{}
 	b, err := xormutil.MustGetXormSession(ctx).
-		Where("repo_path = ?", repoPath).
+		Where("repo_id = ?", repoPath).
 		And("branch = ?", branch).
 		Limit(1).
 		Get(&ret)
@@ -34,7 +34,7 @@ func GetProtectedBranch(ctx context.Context, repoPath, branch string) (Protected
 }
 
 func ListProtectedBranch(ctx context.Context, reqDTO ListProtectedBranchReqDTO) ([]ProtectedBranch, error) {
-	session := xormutil.MustGetXormSession(ctx).Where("repo_path = ?", reqDTO.RepoPath)
+	session := xormutil.MustGetXormSession(ctx).Where("repo_id = ?", reqDTO.RepoId)
 	if reqDTO.SearchName != "" {
 		session.And("branch like ?", reqDTO.SearchName+"%")
 	}
@@ -50,7 +50,7 @@ func ListProtectedBranch(ctx context.Context, reqDTO ListProtectedBranchReqDTO) 
 }
 
 func CountProtectedBranch(ctx context.Context, reqDTO ListProtectedBranchReqDTO) (int64, error) {
-	session := xormutil.MustGetXormSession(ctx).Where("repo_path = ?", reqDTO.RepoPath)
+	session := xormutil.MustGetXormSession(ctx).Where("repo_id = ?", reqDTO.RepoId)
 	if reqDTO.SearchName != "" {
 		session.And("branch like ?", reqDTO.SearchName+"%")
 	}

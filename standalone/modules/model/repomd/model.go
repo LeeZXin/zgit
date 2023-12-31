@@ -11,6 +11,7 @@ const (
 
 type Repo struct {
 	Id            int64     `json:"id" xorm:"pk autoincr"`
+	RepoId        string    `json:"repoId"`
 	Path          string    `json:"path"`
 	Name          string    `json:"name"`
 	Author        string    `json:"author"`
@@ -33,6 +34,7 @@ func (*Repo) TableName() string {
 
 func (r *Repo) ToRepoInfo() RepoInfo {
 	return RepoInfo{
+		RepoId:    r.RepoId,
 		Name:      r.Name,
 		Path:      r.Path,
 		Author:    r.Author,
@@ -48,7 +50,7 @@ func (r *Repo) ToRepoInfo() RepoInfo {
 
 type RepoManage struct {
 	Id         int64     `json:"id" xorm:"pk autoincr"`
-	RepoPath   string    `json:"repoPath"`
+	RepoId     string    `json:"repoId"`
 	Account    string    `json:"account"`
 	ManageType int       `json:"manageType"`
 	Created    time.Time `json:"created" xorm:"created"`

@@ -76,7 +76,8 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 			return errors.New("Unknown LFS verb:" + lfsVerb)
 		}
 	}
-	if err := checkAccessMode(ctx, operator, repoPath, accessMode); err != nil {
+	repo, err := checkAccessMode(ctx, operator, repoPath, accessMode)
+	if err != nil {
 		return err
 	}
 	// LFS token authentication
@@ -88,9 +89,9 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 				ExpiresAt: jwt.NewNumericDate(now.Add(setting.LfsJwtAuthExpiry())),
 				NotBefore: jwt.NewNumericDate(now),
 			},
-			RepoPath: repoPath,
-			Op:       lfsVerb,
-			Account:  operator.Account,
+			RepoId:  repoPath,
+			Op:      lfsVerb,
+			Account: operator.Account,
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		// Sign and get the complete encoded token as a string using the secret
@@ -130,8 +131,8 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 	gitCmd.Env = append(gitCmd.Env, os.Environ()...)
 	gitCmd.Env = append(gitCmd.Env,
 		util.JoinFields(
-			git.EnvRepoPath, repoPath,
-			git.EnvPusherID, operator.Account,
+			git.EnvRepoId, repo.RepoId,
+			git.EnvPusherId, operator.Account,
 			git.EnvAppUrl, setting.AppUrl(),
 		)...,
 	)
@@ -139,55 +140,47 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 	return gitCmd.Run()
 }
 
-func checkAccessMode(ctx context.Context, user usermd.UserInfo, repoPath string, accessMode perm.AccessMode) error {
+func checkAccessMode(ctx context.Context, user usermd.UserInfo, repoPath string, accessMode perm.AccessMode) (repomd.Repo, error) {
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	repo, b, err := repomd.GetByPath(ctx, repoPath)
 	if err != nil {
 		logger.Logger.Error(err)
-		return errors.New(i18n.GetByKey(i18n.SystemInternalError))
+		return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemInternalError))
 	}
 	if !b {
-		return errors.New(i18n.GetByKey(i18n.RepoNotFound))
+		return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.RepoNotFound))
 	}
 	b, err = projectmd.ProjectUserExists(ctx, repo.ProjectId, user.Account)
 	if err != nil {
 		logger.Logger.Error(err)
-		return errors.New(i18n.GetByKey(i18n.SystemInternalError))
+		return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemInternalError))
 	}
 	if !b {
-		return errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
-	}
-	b, err = repomd.CheckRepoUserExists(ctx, repoPath, user.Account, repomd.ProhibitedUser)
-	if err != nil {
-		logger.Logger.Error(err)
-		return errors.New(i18n.GetByKey(i18n.SystemInternalError))
-	}
-	if b {
-		return errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
+		return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
 	}
 	if accessMode == perm.AccessModeWrite {
 		// 检查权限
-		b, err = repomd.CheckRepoUserExists(ctx, repoPath, user.Account, repomd.Developer, repomd.Maintainer)
+		b, err = repomd.CheckRepoUserExists(ctx, repo.RepoId, user.Account, repomd.Developer, repomd.Maintainer)
 		if err != nil {
 			logger.Logger.Error(err)
-			return errors.New(i18n.GetByKey(i18n.SystemInternalError))
+			return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemInternalError))
 		}
 		if !b {
-			return errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
+			return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
 		}
 	} else if accessMode == perm.AccessModeRead {
 		// 检查权限
-		b, err = repomd.CheckRepoUserExists(ctx, repoPath, user.Account, repomd.Guest, repomd.Developer, repomd.Maintainer)
+		b, err = repomd.CheckRepoUserExists(ctx, repo.RepoId, user.Account, repomd.Guest, repomd.Developer, repomd.Maintainer)
 		if err != nil {
 			logger.Logger.Error(err)
-			return errors.New(i18n.GetByKey(i18n.SystemInternalError))
+			return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemInternalError))
 		}
 		if !b {
-			return errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
+			return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
 		}
 	} else {
-		return errors.New(i18n.GetByKey(i18n.SystemInvalidArgs))
+		return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemInvalidArgs))
 	}
-	return nil
+	return repo, nil
 }

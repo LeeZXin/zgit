@@ -5,17 +5,17 @@ import (
 )
 
 type InsertProtectedBranchReqVO struct {
-	RepoPath string `json:"repoPath"`
-	Branch   string `json:"branch"`
+	RepoId string `json:"repoId"`
+	Branch string `json:"branch"`
 }
 
 type DeleteProtectedBranchReqVO struct {
-	RepoPath string `json:"repoPath"`
-	Branch   string `json:"branch"`
+	RepoId string `json:"repoId"`
+	Branch string `json:"branch"`
 }
 
 type ListProtectedBranchReqVO struct {
-	RepoPath   string `json:"repoPath"`
+	RepoId     string `json:"repoId"`
 	SearchName string `json:"searchName"`
 	Offset     int64  `json:"offset"`
 	Limit      int    `json:"limit"`

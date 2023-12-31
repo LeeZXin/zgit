@@ -11,7 +11,7 @@ const (
 
 type LfsLock struct {
 	Id           int64     `json:"id" xorm:"pk autoincr"`
-	RepoPath     string    `json:"repoPath"`
+	RepoId       string    `json:"repoId"`
 	OwnerAccount string    `json:"ownerAccount"`
 	Path         string    `json:"path" xorm:"TEXT"`
 	Created      time.Time `json:"created" xorm:"created"`

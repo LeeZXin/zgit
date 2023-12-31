@@ -26,7 +26,7 @@ var (
 
 type Commit struct {
 	Id            string
-	Tree          *Tree
+	Tree          Tree
 	Parent        []string
 	Author        User
 	AuthorSigTime time.Time
@@ -95,8 +95,8 @@ type Tree struct {
 	Id string `json:"id"`
 }
 
-func NewTree(id string) *Tree {
-	return &Tree{
+func NewTree(id string) Tree {
+	return Tree{
 		Id: id,
 	}
 }
@@ -372,4 +372,38 @@ func GetFileLastCommit(ctx context.Context, repoPath, refName, filePath string) 
 	}
 	commitId := strings.TrimSpace(result.ReadAsString())
 	return GetCommitByCommitId(ctx, repoPath, commitId)
+}
+
+func GetCommit(ctx context.Context, repoPath string, refName string) (Commit, string, error) {
+	if CheckRefIsTag(ctx, repoPath, refName) {
+		if !strings.HasPrefix(refName, TagPrefix) {
+			refName = TagPrefix + refName
+		}
+		commit, err := GetCommitByTag(ctx, repoPath, refName)
+		return commit, refName, err
+	}
+	if CheckRefIsBranch(ctx, repoPath, refName) {
+		if !strings.HasPrefix(refName, BranchPrefix) {
+			refName = BranchPrefix + refName
+		}
+		commitId, err := GetRefCommitId(ctx, repoPath, refName)
+		if err != nil {
+			return Commit{}, "", err
+		}
+		commit, err := GetCommitByCommitId(ctx, repoPath, commitId)
+		return commit, refName, err
+	}
+	if CheckRefIsCommit(ctx, repoPath, refName) {
+		commit, err := GetCommitByCommitId(ctx, repoPath, refName)
+		return commit, refName, err
+	}
+	return Commit{}, "", fmt.Errorf("%s unsupported type", refName)
+}
+
+func DetectForcePush(ctx context.Context, repoPath, oldCommitId, newCommitId string) (bool, error) {
+	result, err := command.NewCommand("rev-list", "--max-count=1", oldCommitId, "^"+newCommitId).Run(ctx, command.WithDir(repoPath))
+	if err != nil {
+		return false, err
+	}
+	return len(result.ReadAsBytes()) > 0, nil
 }

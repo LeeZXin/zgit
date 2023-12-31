@@ -21,20 +21,20 @@ type InitRepoReqVO struct {
 }
 
 type DeleteRepoReqVO struct {
-	RepoPath string `json:"repoPath"`
+	RepoId string `json:"repoId"`
 }
 
 type TreeRepoReqVO struct {
-	RepoPath string `json:"repoPath"`
-	RefName  string `json:"refName"`
-	Dir      string `json:"dir"`
+	RepoId  string `json:"repoId"`
+	RefName string `json:"refName"`
+	Dir     string `json:"dir"`
 }
 
 type EntriesRepoReqVO struct {
-	RepoPath string `json:"repoPath"`
-	RefName  string `json:"refName"`
-	Dir      string `json:"dir"`
-	Offset   int    `json:"offset"`
+	RepoId  string `json:"repoId"`
+	RefName string `json:"refName"`
+	Dir     string `json:"dir"`
+	Offset  int    `json:"offset"`
 }
 
 type ListRepoReqVO struct {
@@ -85,6 +85,7 @@ type TreeRepoRespVO struct {
 }
 
 type RepoVO struct {
+	RepoId    string `json:"repoId"`
 	Name      string `json:"name"`
 	Path      string `json:"path"`
 	Author    string `json:"author"`
@@ -99,7 +100,7 @@ type RepoVO struct {
 }
 
 type CatFileReqVO struct {
-	RepoPath string `json:"repoPath"`
+	RepoId   string `json:"repoId"`
 	RefName  string `json:"refName"`
 	Dir      string `json:"dir"`
 	FileName string `json:"fileName"`
@@ -122,7 +123,7 @@ type AllTypeListRespVO struct {
 }
 
 type AllBranchesReqVO struct {
-	RepoPath string `json:"repoPath"`
+	RepoId string `json:"repoId"`
 }
 
 type AllBranchesRespVO struct {
@@ -131,7 +132,7 @@ type AllBranchesRespVO struct {
 }
 
 type AllTagsReqVO struct {
-	RepoPath string `json:"repoPath"`
+	RepoId string `json:"repoId"`
 }
 
 type AllTagsRespVO struct {

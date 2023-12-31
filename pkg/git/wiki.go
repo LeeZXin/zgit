@@ -38,7 +38,7 @@ func UpdateWikiPage(ctx context.Context, wikiPath, pageName, content, message st
 	if err != nil {
 		return err
 	}
-	object, err := HashObject(ctx, tempDir, strings.NewReader(content))
+	object, err := HashObjectByStdin(ctx, tempDir, strings.NewReader(content))
 	if err != nil {
 		return fmt.Errorf("hash content failed with err:%v", err)
 	}
@@ -55,7 +55,7 @@ func DeleteWikiPage(ctx context.Context, wikiPath, pageName, message string) err
 	if err != nil {
 		return err
 	}
-	if err = RemoveFilesFromIndex(ctx, tempDir, RegularFileMode.String(), pageName); err != nil {
+	if err = RemoveFilesFromIndex(ctx, tempDir, pageName); err != nil {
 		return fmt.Errorf("RemoveFilesFromIndex failed with err:%v", err)
 	}
 	return afterUpdateWikiPage(ctx, tempDir, message, hasMasterBranch)

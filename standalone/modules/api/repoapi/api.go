@@ -52,7 +52,7 @@ func allBranches(c *gin.Context) {
 	var req AllBranchesReqVO
 	if util.ShouldBindJSON(&req, c) {
 		branches, err := reposrv.AllBranches(c.Request.Context(), reposrv.AllBranchesReqDTO{
-			RepoPath: req.RepoPath,
+			RepoId:   req.RepoId,
 			Operator: apicommon.MustGetLoginUser(c),
 		})
 		if err != nil {
@@ -70,7 +70,7 @@ func allTags(c *gin.Context) {
 	var req AllTagsReqVO
 	if util.ShouldBindJSON(&req, c) {
 		branches, err := reposrv.AllTags(c.Request.Context(), reposrv.AllTagsReqDTO{
-			RepoPath: req.RepoPath,
+			RepoId:   req.RepoId,
 			Operator: apicommon.MustGetLoginUser(c),
 		})
 		if err != nil {
@@ -112,7 +112,7 @@ func treeRepo(c *gin.Context) {
 	var req TreeRepoReqVO
 	if util.ShouldBindJSON(&req, c) {
 		repoRespDTO, err := reposrv.TreeRepo(c.Request.Context(), reposrv.TreeRepoReqDTO{
-			RepoPath: req.RepoPath,
+			RepoId:   req.RepoId,
 			RefName:  req.RefName,
 			Dir:      req.Dir,
 			Operator: apicommon.MustGetLoginUser(c),
@@ -141,7 +141,7 @@ func entriesRepo(c *gin.Context) {
 	var req EntriesRepoReqVO
 	if util.ShouldBindJSON(&req, c) {
 		repoRespDTO, err := reposrv.EntriesRepo(c.Request.Context(), reposrv.EntriesRepoReqDTO{
-			RepoPath: req.RepoPath,
+			RepoId:   req.RepoId,
 			RefName:  req.RefName,
 			Dir:      req.Dir,
 			Offset:   req.Offset,
@@ -210,7 +210,7 @@ func deleteRepo(c *gin.Context) {
 	if util.ShouldBindJSON(&req, c) {
 		err := reposrv.DeleteRepo(c.Request.Context(), reposrv.DeleteRepoReqDTO{
 			Operator: apicommon.MustGetLoginUser(c),
-			RepoPath: req.RepoPath,
+			RepoId:   req.RepoId,
 		})
 		if err != nil {
 			util.HandleApiErr(err, c)
@@ -263,7 +263,7 @@ func catFile(c *gin.Context) {
 	var req CatFileReqVO
 	if util.ShouldBindJSON(&req, c) {
 		fileMode, content, err := reposrv.CatFile(c.Request.Context(), reposrv.CatFileReqDTO{
-			RepoPath: req.RepoPath,
+			RepoId:   req.RepoId,
 			RefName:  req.RefName,
 			Dir:      req.Dir,
 			FileName: req.FileName,

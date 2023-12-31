@@ -29,7 +29,7 @@ func insertProtectedBranch(c *gin.Context) {
 	var req InsertProtectedBranchReqVO
 	if util.ShouldBindJSON(&req, c) {
 		err := branchsrv.InsertProtectedBranch(c.Request.Context(), branchsrv.InsertProtectedBranchReqDTO{
-			RepoPath: req.RepoPath,
+			RepoId:   req.RepoId,
 			Branch:   req.Branch,
 			Operator: apicommon.MustGetLoginUser(c),
 		})
@@ -45,7 +45,7 @@ func deleteProtectedBranch(c *gin.Context) {
 	var req DeleteProtectedBranchReqVO
 	if util.ShouldBindJSON(&req, c) {
 		err := branchsrv.DeleteProtectedBranch(c.Request.Context(), branchsrv.DeleteProtectedBranchReqDTO{
-			RepoPath: req.RepoPath,
+			RepoId:   req.RepoId,
 			Branch:   req.Branch,
 			Operator: apicommon.MustGetLoginUser(c),
 		})
@@ -61,7 +61,7 @@ func listProtectedBranch(c *gin.Context) {
 	var req ListProtectedBranchReqVO
 	if util.ShouldBindJSON(&req, c) {
 		respDTO, err := branchsrv.ListProtectedBranch(c.Request.Context(), branchsrv.ListProtectedBranchReqDTO{
-			RepoPath:   req.RepoPath,
+			RepoId:     req.RepoId,
 			SearchName: req.SearchName,
 			Offset:     req.Offset,
 			Limit:      req.Limit,

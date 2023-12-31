@@ -12,18 +12,41 @@ const (
 	DownDirection = "down"
 )
 
-type PreparePullRequestReqDTO struct {
-	RepoPath string
+type DiffCommitsReqDTO struct {
+	RepoId   string
 	Target   string
 	Head     string
 	Operator usermd.UserInfo
 }
 
-func (r *PreparePullRequestReqDTO) IsValid() error {
+func (r *DiffCommitsReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+		return util.InvalidArgsError()
+	}
+	if len(r.Target) > 128 || len(r.Target) == 0 {
+		return util.InvalidArgsError()
+	}
+	if len(r.Head) > 128 || len(r.Head) == 0 {
+		return util.InvalidArgsError()
+	}
+	return nil
+}
+
+type SubmitPullRequestReqDTO struct {
+	RepoId   string
+	Target   string
+	Head     string
+	Operator usermd.UserInfo
+}
+
+func (r *SubmitPullRequestReqDTO) IsValid() error {
+	if r.Operator.Account == "" {
+		return util.InvalidArgsError()
+	}
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
 		return util.InvalidArgsError()
 	}
 	if len(r.Target) > 128 || len(r.Target) == 0 {
@@ -36,7 +59,7 @@ func (r *PreparePullRequestReqDTO) IsValid() error {
 }
 
 type CatFileReqDTO struct {
-	RepoPath  string
+	RepoId    string
 	CommitId  string
 	FileName  string
 	Offset    int
@@ -49,7 +72,7 @@ func (r *CatFileReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
 		return util.InvalidArgsError()
 	}
 	if len(r.CommitId) == 0 || len(r.CommitId) > 128 {
@@ -70,19 +93,19 @@ func (r *CatFileReqDTO) IsValid() error {
 	return nil
 }
 
-type DiffReqDTO struct {
-	RepoPath string
+type DiffFileReqDTO struct {
+	RepoId   string
 	Target   string
 	Head     string
 	FileName string
 	Operator usermd.UserInfo
 }
 
-func (r *DiffReqDTO) IsValid() error {
+func (r *DiffFileReqDTO) IsValid() error {
 	if r.Operator.Account == "" {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoPath) > 255 || len(r.RepoPath) == 0 {
+	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
 		return util.InvalidArgsError()
 	}
 	if len(r.Target) > 128 || len(r.Target) == 0 {
@@ -107,7 +130,7 @@ type CommitDTO struct {
 	ShortId       string
 }
 
-type PreparePullRequestRespDTO struct {
+type DiffCommitsRespDTO struct {
 	Target        string              `json:"target"`
 	Head          string              `json:"head"`
 	TargetCommit  CommitDTO           `json:"targetCommit"`
@@ -115,6 +138,8 @@ type PreparePullRequestRespDTO struct {
 	Commits       []CommitDTO         `json:"commits"`
 	NumFiles      int                 `json:"numFiles"`
 	DiffNumsStats DiffNumsStatInfoDTO `json:"diffNumsStats"`
+	ConflictFiles []string            `json:"conflictFiles"`
+	CanMerge      bool                `json:"canMerge"`
 }
 
 type DiffNumsStatInfoDTO struct {
@@ -132,7 +157,7 @@ type DiffNumsStatDTO struct {
 	DeleteNums int
 }
 
-type DiffRespDTO struct {
+type DiffFileRespDTO struct {
 	FilePath    string
 	OldMode     string
 	Mode        string
@@ -152,4 +177,34 @@ type DiffLineDTO struct {
 	Prefix  string
 	RightNo int
 	Text    string
+}
+
+type ClosePullRequestReqDTO struct {
+	PrId     string
+	Operator usermd.UserInfo
+}
+
+func (r *ClosePullRequestReqDTO) IsValid() error {
+	if r.Operator.Account == "" {
+		return util.InvalidArgsError()
+	}
+	if len(r.PrId) > 32 || len(r.PrId) == 0 {
+		return util.InvalidArgsError()
+	}
+	return nil
+}
+
+type MergePullRequestReqDTO struct {
+	PrId     string
+	Operator usermd.UserInfo
+}
+
+func (r *MergePullRequestReqDTO) IsValid() error {
+	if r.Operator.Account == "" {
+		return util.InvalidArgsError()
+	}
+	if len(r.PrId) > 32 || len(r.PrId) == 0 {
+		return util.InvalidArgsError()
+	}
+	return nil
 }
