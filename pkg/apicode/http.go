@@ -14,11 +14,11 @@ const (
 	WrongLoginPasswordCode
 	NotLoginCode
 	NotAdminCode
-	OutOfLimitCode
 	UnauthorizedCode
-	UnimplementedCode
 	UserAlreadyExistsCode
 	PullRequestCannotMergeCode
+	ProjectUserGroupHasUserWhenDelCode
+	CannotUpdateProjectUserAdminGroupCode
 )
 
 func (c Code) Int() int {

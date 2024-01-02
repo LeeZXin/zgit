@@ -10,6 +10,7 @@ import (
 	"zgit/pkg/apisession"
 	"zgit/pkg/i18n"
 	"zgit/standalone/modules/model/usermd"
+	"zgit/standalone/modules/service/cfgsrv"
 	"zgit/util"
 )
 
@@ -96,7 +97,7 @@ func InsertUser(ctx context.Context, reqDTO InsertUserReqDTO) error {
 		return err
 	}
 	if !reqDTO.Operator.IsAdmin {
-		return bizerr.NewBizErr(apicode.NotAdminCode.Int(), i18n.GetByKey(i18n.SystemNotAdmin))
+		return util.UnauthorizedError()
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
@@ -113,7 +114,7 @@ func InsertUser(ctx context.Context, reqDTO InsertUserReqDTO) error {
 	})
 	if err != nil {
 		logger.Logger.WithContext(ctx).Errorf("InsertUser err: %v", err)
-		return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+		return util.InternalError()
 	}
 	return nil
 }
@@ -121,6 +122,14 @@ func InsertUser(ctx context.Context, reqDTO InsertUserReqDTO) error {
 func RegisterUser(ctx context.Context, reqDTO RegisterUserReqDTO) error {
 	if err := reqDTO.IsValid(); err != nil {
 		return err
+	}
+	cfg, err := cfgsrv.GetSysCfgWithCache(ctx)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return err
+	}
+	if cfg.DisableSelfRegisterUser {
+		return util.UnauthorizedError()
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
@@ -160,7 +169,7 @@ func DeleteUser(ctx context.Context, reqDTO DeleteUserReqDTO) error {
 	user, b, err := usermd.GetByAccount(ctx, reqDTO.Account)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return bizerr.NewBizErr(apicode.InternalErrorCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+		return util.InternalError()
 	}
 	if !b {
 		return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.UserNotFound))
@@ -169,7 +178,7 @@ func DeleteUser(ctx context.Context, reqDTO DeleteUserReqDTO) error {
 	_, err = usermd.DeleteUser(ctx, user)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return bizerr.NewBizErr(apicode.InternalErrorCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+		return util.InternalError()
 	}
 	// 删除用户登录状态
 	apisession.GetStore().DeleteByAccount(reqDTO.Account)

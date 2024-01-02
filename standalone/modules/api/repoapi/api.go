@@ -37,6 +37,14 @@ func InitApi() {
 			group.POST("/allBranches", allBranches)
 			// 展示仓库所有tag
 			group.POST("/allTags", allTags)
+			// gc
+			group.POST("/gc", gc)
+			// 提交差异
+			group.POST("/diffCommits", diffCommits)
+			// 展示提交文件差异
+			group.POST("/diffFile", diffFile)
+			// 展示文件内容
+			group.POST("/showDiffTextContent", showDiffTextContent)
 		}
 		// 仓库管理
 		group = e.Group("/api/repoManage", apicommon.CheckLogin)
@@ -81,6 +89,21 @@ func allTags(c *gin.Context) {
 			BaseResp: ginutil.DefaultSuccessResp,
 			Data:     branches,
 		})
+	}
+}
+
+func gc(c *gin.Context) {
+	var req GcReqVO
+	if util.ShouldBindJSON(&req, c) {
+		err := reposrv.Gc(c.Request.Context(), reposrv.GcReqDTO{
+			RepoId:   req.RepoId,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		c.JSON(http.StatusOK, ginutil.DefaultSuccessResp)
 	}
 }
 
@@ -223,18 +246,15 @@ func deleteRepo(c *gin.Context) {
 func listRepo(c *gin.Context) {
 	var req ListRepoReqVO
 	if util.ShouldBindJSON(&req, c) {
-		respDTO, err := reposrv.ListRepo(c.Request.Context(), reposrv.ListRepoReqDTO{
-			Offset:     req.Offset,
-			Limit:      req.Limit,
-			SearchName: req.SearchName,
-			ProjectId:  req.ProjectId,
-			Operator:   apicommon.MustGetLoginUser(c),
+		repoList, err := reposrv.ListRepo(c.Request.Context(), reposrv.ListRepoReqDTO{
+			ProjectId: req.ProjectId,
+			Operator:  apicommon.MustGetLoginUser(c),
 		})
 		if err != nil {
 			util.HandleApiErr(err, c)
 			return
 		}
-		repoList, _ := listutil.Map(respDTO.RepoList, func(t repomd.Repo) (RepoVO, error) {
+		repoVoList, _ := listutil.Map(repoList, func(t repomd.Repo) (RepoVO, error) {
 			return RepoVO{
 				Name:      t.Name,
 				Path:      t.Path,
@@ -250,11 +270,8 @@ func listRepo(c *gin.Context) {
 			}, nil
 		})
 		c.JSON(http.StatusOK, ListRepoRespVO{
-			BaseResp:   ginutil.DefaultSuccessResp,
-			RepoList:   repoList,
-			TotalCount: respDTO.TotalCount,
-			Cursor:     respDTO.Cursor,
-			Limit:      respDTO.Limit,
+			BaseResp: ginutil.DefaultSuccessResp,
+			RepoList: repoVoList,
 		})
 	}
 }
@@ -278,5 +295,120 @@ func catFile(c *gin.Context) {
 			Mode:     fileMode.Readable(),
 			Content:  content,
 		})
+	}
+}
+
+func diffFile(c *gin.Context) {
+	var req DiffFileReqVO
+	if util.ShouldBindJSON(&req, c) {
+		respDTO, err := reposrv.DiffFile(c.Request.Context(), reposrv.DiffFileReqDTO{
+			RepoId:   req.RepoId,
+			Target:   req.Target,
+			Head:     req.Head,
+			FileName: req.FileName,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		ret := DiffFileRespVO{
+			FilePath:    respDTO.FilePath,
+			OldMode:     respDTO.OldMode,
+			Mode:        respDTO.Mode,
+			IsSubModule: respDTO.IsSubModule,
+			FileType:    respDTO.FileType.String(),
+			IsBinary:    respDTO.IsBinary,
+			RenameFrom:  respDTO.RenameFrom,
+			RenameTo:    respDTO.RenameTo,
+			CopyFrom:    respDTO.CopyFrom,
+			CopyTo:      respDTO.CopyTo,
+		}
+		ret.Lines, _ = listutil.Map(respDTO.Lines, func(t reposrv.DiffLineDTO) (DiffLineVO, error) {
+			return DiffLineVO{
+				Index:   t.Index,
+				LeftNo:  t.LeftNo,
+				Prefix:  t.Prefix,
+				RightNo: t.RightNo,
+				Text:    t.Text,
+			}, nil
+		})
+		c.JSON(http.StatusOK, ret)
+	}
+}
+
+func diffCommits(c *gin.Context) {
+	var req PrepareMergeReqVO
+	if util.ShouldBindJSON(&req, c) {
+		respDTO, err := reposrv.DiffCommits(c.Request.Context(), reposrv.DiffCommitsReqDTO{
+			RepoId:   req.RepoId,
+			Target:   req.Target,
+			Head:     req.Head,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		respVO := PrepareMergeRespVO{
+			BaseResp:     ginutil.DefaultSuccessResp,
+			Target:       respDTO.Target,
+			Head:         respDTO.Head,
+			TargetCommit: commitDto2Vo(respDTO.TargetCommit),
+			HeadCommit:   commitDto2Vo(respDTO.HeadCommit),
+			NumFiles:     respDTO.NumFiles,
+			DiffNumsStats: DiffNumsStatInfoVO{
+				FileChangeNums: respDTO.DiffNumsStats.FileChangeNums,
+				InsertNums:     respDTO.DiffNumsStats.InsertNums,
+				DeleteNums:     respDTO.DiffNumsStats.DeleteNums,
+			},
+			ConflictFiles: respDTO.ConflictFiles,
+			CanMerge:      respDTO.CanMerge,
+		}
+		respVO.Commits, _ = listutil.Map(respDTO.Commits, func(t reposrv.CommitDTO) (CommitVO, error) {
+			return commitDto2Vo(t), nil
+		})
+		respVO.DiffNumsStats.Stats, _ = listutil.Map(respDTO.DiffNumsStats.Stats, func(t reposrv.DiffNumsStatDTO) (DiffNumsStatVO, error) {
+			return DiffNumsStatVO{
+				RawPath:    t.RawPath,
+				Path:       t.Path,
+				TotalNums:  t.TotalNums,
+				InsertNums: t.InsertNums,
+				DeleteNums: t.DeleteNums,
+			}, nil
+		})
+		c.JSON(http.StatusOK, respVO)
+	}
+}
+
+func showDiffTextContent(c *gin.Context) {
+	var req ShowDiffTextContentReqVO
+	if util.ShouldBindJSON(&req, c) {
+		lines, err := reposrv.ShowDiffTextContent(c.Request.Context(), reposrv.ShowDiffTextContentReqDTO{
+			RepoId:    req.RepoId,
+			CommitId:  req.CommitId,
+			FileName:  req.FileName,
+			Offset:    req.Offset,
+			Limit:     req.Limit,
+			Direction: req.Direction,
+			Operator:  apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		ret := ShowDiffTextContentRespVO{
+			BaseResp: ginutil.DefaultSuccessResp,
+		}
+		ret.Lines, _ = listutil.Map(lines, func(t reposrv.DiffLineDTO) (DiffLineVO, error) {
+			return DiffLineVO{
+				Index:   t.Index,
+				LeftNo:  t.LeftNo,
+				Prefix:  t.Prefix,
+				RightNo: t.RightNo,
+				Text:    t.Text,
+			}, nil
+		})
+		c.JSON(http.StatusOK, ret)
 	}
 }

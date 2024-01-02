@@ -8,6 +8,7 @@ import (
 	"zgit/pkg/git"
 	"zgit/setting"
 	"zgit/standalone/modules/api/branchapi"
+	"zgit/standalone/modules/api/cfgapi"
 	"zgit/standalone/modules/api/hookapi"
 	"zgit/standalone/modules/api/lfsapi"
 	"zgit/standalone/modules/api/projectapi"
@@ -15,6 +16,7 @@ import (
 	"zgit/standalone/modules/api/repoapi"
 	"zgit/standalone/modules/api/sshkeyapi"
 	"zgit/standalone/modules/api/userapi"
+	"zgit/standalone/modules/service/cfgsrv"
 	"zgit/standalone/sshserv"
 	"zgit/util"
 )
@@ -32,6 +34,8 @@ func runStandalone(*cli.Context) error {
 		return errors.New("invalid standalone corpId config")
 	}
 	logger.Logger.Info("zgit works on standalone mode")
+	// 初始化系统配置
+	cfgsrv.InitSysCfg()
 	// 初始化ssh服务
 	sshserv.InitSsh()
 	//
@@ -52,6 +56,8 @@ func runStandalone(*cli.Context) error {
 	pullrequestapi.InitApi()
 	// 分支
 	branchapi.InitApi()
+	// 系统配置api
+	cfgapi.InitApi()
 	starter.Run()
 	return nil
 }

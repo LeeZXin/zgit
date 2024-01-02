@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	github.com/42wim/sshsig v0.0.0-20211121163825-841cf5bbc121
-	github.com/LeeZXin/zsf v1.0.92
-	github.com/LeeZXin/zsf-utils v1.0.29
+	github.com/LeeZXin/zsf v1.0.93
+	github.com/LeeZXin/zsf-utils v1.0.30
 	github.com/gin-gonic/gin v1.9.1
 	github.com/gliderlabs/ssh v0.3.5
 	github.com/golang-jwt/jwt/v5 v5.2.0

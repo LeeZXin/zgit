@@ -63,33 +63,27 @@ type RepoInfo struct {
 	LfsSize   int64  `json:"lfsSize"`
 }
 
-type ManageType int
+type RepoStatus int
 
 const (
-	Developer ManageType = iota
-	Guest
-	CodeReviewer
-	ProhibitedUser
-	Maintainer
+	OpenRepoStatus RepoStatus = iota
+	ClosedRepoStatus
+	DeletedRepoStatus
 )
 
-func (t ManageType) Int() int {
-	return int(t)
+func (s RepoStatus) Int() int {
+	return int(s)
 }
 
-func (t ManageType) Readable() string {
-	switch t {
-	case Developer:
-		return i18n.GetByKey(i18n.RepoDeveloper)
-	case Maintainer:
-		return i18n.GetByKey(i18n.RepoMaintainer)
-	case Guest:
-		return i18n.GetByKey(i18n.RepoGuest)
-	case CodeReviewer:
-		return i18n.GetByKey(i18n.RepoCodeReviewer)
-	case ProhibitedUser:
-		return i18n.GetByKey(i18n.RepoProhibitedUser)
+func (s RepoStatus) Readable() string {
+	switch s {
+	case OpenRepoStatus:
+		return i18n.GetByKey(i18n.RepoOpenStatus)
+	case ClosedRepoStatus:
+		return i18n.GetByKey(i18n.RepoClosedStatus)
+	case DeletedRepoStatus:
+		return i18n.GetByKey(i18n.RepoDeletedStatus)
 	default:
-		return i18n.GetByKey(i18n.RepoUnknownUser)
+		return i18n.GetByKey(i18n.RepoUnknownStatus)
 	}
 }

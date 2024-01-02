@@ -33,27 +33,18 @@ func UpdateTotalAndGitSize(ctx context.Context, repoId string, totalSize, gitSiz
 	return err
 }
 
-func ListRepo(ctx context.Context, offset int64, limit int, projectId, searchName string) ([]Repo, error) {
+func ListAllRepo(ctx context.Context, projectId string) ([]Repo, error) {
 	session := xormutil.MustGetXormSession(ctx).Where("project_id = ?", projectId)
-	if searchName != "" {
-		session.And("name like ?", searchName+"%")
-	}
-	if offset > 0 {
-		session.And("id > ?", offset)
-	}
-	if limit > 0 {
-		session.Limit(limit)
-	}
 	ret := make([]Repo, 0)
-	return ret, session.OrderBy("id asc").Find(&ret)
+	return ret, session.Find(&ret)
 }
 
-func CountRepo(ctx context.Context, projectId, searchName string) (int64, error) {
-	session := xormutil.MustGetXormSession(ctx).Where("project_id = ?", projectId)
-	if searchName != "" {
-		session.And("name like ?", searchName+"%")
-	}
-	return session.Count(new(Repo))
+func ListRepoByIdList(ctx context.Context, projectId string, repoIdList []string) ([]Repo, error) {
+	session := xormutil.MustGetXormSession(ctx).
+		Where("project_id = ?", projectId).
+		In("repo_id", repoIdList)
+	ret := make([]Repo, 0)
+	return ret, session.Find(&ret)
 }
 
 func UpdateIsEmpty(ctx context.Context, repoId string, isEmpty bool) error {
@@ -88,32 +79,4 @@ func InsertRepo(ctx context.Context, reqDTO InsertRepoReqDTO) (Repo, error) {
 func DeleteRepo(ctx context.Context, repo Repo) (bool, error) {
 	rows, err := xormutil.MustGetXormSession(ctx).Where("repo_id = ?", repo.RepoId).Delete(new(Repo))
 	return rows == 1, err
-}
-
-func InsertRepoUser(ctx context.Context, repoId, account string, manageType ManageType) (RepoManage, error) {
-	ret := RepoManage{
-		RepoId:     repoId,
-		Account:    account,
-		ManageType: manageType.Int(),
-	}
-	_, err := xormutil.MustGetXormSession(ctx).Insert(&ret)
-	return ret, err
-}
-
-func DeleteRepoUser(ctx context.Context, repoId, account string, manageType ManageType) (bool, error) {
-	rows, err := xormutil.MustGetXormSession(ctx).
-		Where("repo_id = ?", repoId).
-		And("account = ?", account).
-		And("manage_type = ?", manageType.Int()).
-		Limit(1).
-		Delete(new(RepoManage))
-	return rows == 1, err
-}
-
-func CheckRepoUserExists(ctx context.Context, repoId, account string, typeList ...ManageType) (bool, error) {
-	return xormutil.MustGetXormSession(ctx).
-		Where("repo_id = ?", repoId).
-		And("account = ?", account).
-		In("manage_type", typeList).
-		Exist(new(RepoManage))
 }

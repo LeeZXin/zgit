@@ -38,10 +38,7 @@ type EntriesRepoReqVO struct {
 }
 
 type ListRepoReqVO struct {
-	Offset     int64  `json:"offset"`
-	Limit      int    `json:"limit"`
-	SearchName string `json:"searchName"`
-	ProjectId  string `json:"projectId"`
+	ProjectId string `json:"projectId"`
 }
 
 type ListRepoRespVO struct {
@@ -138,4 +135,85 @@ type AllTagsReqVO struct {
 type AllTagsRespVO struct {
 	ginutil.BaseResp
 	Data []string `json:"data"`
+}
+
+type GcReqVO struct {
+	RepoId string `json:"repoId"`
+}
+
+type PrepareMergeReqVO struct {
+	RepoId string `json:"repoId"`
+	Target string `json:"target"`
+	Head   string `json:"head"`
+}
+
+type DiffFileReqVO struct {
+	RepoId   string `json:"repoId"`
+	Target   string `json:"target"`
+	Head     string `json:"head"`
+	FileName string `json:"fileName"`
+}
+
+type PrepareMergeRespVO struct {
+	ginutil.BaseResp
+	Target        string             `json:"target"`
+	Head          string             `json:"head"`
+	TargetCommit  CommitVO           `json:"targetCommit"`
+	HeadCommit    CommitVO           `json:"headCommit"`
+	Commits       []CommitVO         `json:"commits"`
+	NumFiles      int                `json:"numFiles"`
+	DiffNumsStats DiffNumsStatInfoVO `json:"diffNumsStats"`
+	ConflictFiles []string           `json:"conflictFiles"`
+	CanMerge      bool               `json:"canMerge"`
+}
+
+type DiffNumsStatInfoVO struct {
+	FileChangeNums int              `json:"fileChangeNums"`
+	InsertNums     int              `json:"insertNums"`
+	DeleteNums     int              `json:"deleteNums"`
+	Stats          []DiffNumsStatVO `json:"stats"`
+}
+
+type DiffNumsStatVO struct {
+	RawPath    string `json:"rawPath"`
+	Path       string `json:"path"`
+	TotalNums  int    `json:"totalNums"`
+	InsertNums int    `json:"insertNums"`
+	DeleteNums int    `json:"deleteNums"`
+}
+
+type DiffFileRespVO struct {
+	FilePath    string       `json:"filePath"`
+	OldMode     string       `json:"oldMode"`
+	Mode        string       `json:"mode"`
+	IsSubModule bool         `json:"isSubModule"`
+	FileType    string       `json:"fileType"`
+	IsBinary    bool         `json:"isBinary"`
+	RenameFrom  string       `json:"renameFrom"`
+	RenameTo    string       `json:"renameTo"`
+	CopyFrom    string       `json:"copyFrom"`
+	CopyTo      string       `json:"copyTo"`
+	Lines       []DiffLineVO `json:"lines"`
+}
+
+type DiffLineVO struct {
+	Index   int    `json:"index"`
+	LeftNo  int    `json:"leftNo"`
+	Prefix  string `json:"prefix"`
+	RightNo int    `json:"rightNo"`
+	Text    string `json:"text"`
+}
+
+type ShowDiffTextContentReqVO struct {
+	RepoId    string `json:"repoId"`
+	CommitId  string `json:"commitId"`
+	FileName  string `json:"fileName"`
+	Offset    int    `json:"offset"`
+	Limit     int    `json:"limit"`
+	Direction string `json:"direction"`
+}
+
+type ShowDiffTextContentRespVO struct {
+	ginutil.BaseResp
+	Lines []DiffLineVO `json:"lines"`
 }

@@ -31,7 +31,8 @@ func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 		return false
 	}
 	userInfo, b, err := usersrv.GetUserInfoByAccount(ctx, pubKey.Account)
-	if !b || err != nil {
+	// 系统出错或不存在或被禁用
+	if !b || err != nil || userInfo.IsProhibited {
 		return false
 	}
 	ctx.SetValue(sshserv.ZgitUserAccount, userInfo)

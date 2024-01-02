@@ -96,11 +96,11 @@ type DeleteUserReqDTO struct {
 }
 
 func (r *DeleteUserReqDTO) IsValid() error {
-	if r.Account == "" {
-		return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n2.GetByKey(i18n2.UserInvalidId))
+	if len(r.Account) > 32 || len(r.Account) == 0 {
+		return util.InternalError()
 	}
 	if r.Operator.Account == "" {
-		return bizerr.NewBizErr(apicode.NotLoginCode.Int(), i18n2.GetByKey(i18n2.SystemNotLogin))
+		return util.InternalError()
 	}
 	return nil
 }

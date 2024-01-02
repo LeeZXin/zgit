@@ -338,3 +338,8 @@ func (n RefName) IsBranch() bool {
 func (n RefName) IsTag() bool {
 	return strings.HasPrefix(string(n), TagPrefix)
 }
+
+func Gc(ctx context.Context, repoPath string) error {
+	_, err := command.NewCommand("gc").Run(ctx, command.WithDir(repoPath))
+	return err
+}

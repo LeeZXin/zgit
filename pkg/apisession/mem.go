@@ -51,10 +51,10 @@ func (s *memStore) GetBySessionId(sessionId string) (Session, bool, error) {
 	return ret, b, nil
 }
 
-func (s *memStore) GetByAccount(userId string) (Session, bool, error) {
+func (s *memStore) GetByAccount(account string) (Session, bool, error) {
 	s.RLock()
 	defer s.RUnlock()
-	ret, b := s.userSession[userId]
+	ret, b := s.userSession[account]
 	if ret.ExpireAt < time.Now().UnixMilli() {
 		return Session{}, false, nil
 	}

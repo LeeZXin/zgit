@@ -12,6 +12,7 @@ import (
 	"zgit/pkg/apicode"
 	"zgit/pkg/git"
 	"zgit/pkg/i18n"
+	"zgit/pkg/perm"
 	"zgit/setting"
 	"zgit/standalone/modules/model/projectmd"
 	"zgit/standalone/modules/model/repomd"
@@ -41,9 +42,12 @@ func EntriesRepo(ctx context.Context, reqDTO EntriesRepoReqDTO) (TreeDTO, error)
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	repo, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	repo, p, err := getPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
 	if err != nil {
 		return TreeDTO{}, err
+	}
+	if p.GetRepoPerm(repo.RepoId).CanAccess {
+		return TreeDTO{}, util.UnauthorizedError()
 	}
 	// 空仓库 需要推代码
 	if repo.IsEmpty {
@@ -62,39 +66,40 @@ func EntriesRepo(ctx context.Context, reqDTO EntriesRepoReqDTO) (TreeDTO, error)
 }
 
 // ListRepo 展示仓库列表
-func ListRepo(ctx context.Context, reqDTO ListRepoReqDTO) (ListRepoRespDTO, error) {
+func ListRepo(ctx context.Context, reqDTO ListRepoReqDTO) ([]repomd.Repo, error) {
 	if err := reqDTO.IsValid(); err != nil {
-		return ListRepoRespDTO{}, err
+		return nil, err
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	// 检查权限
-	b, err := projectmd.ProjectUserExists(ctx, reqDTO.ProjectId, reqDTO.Operator.Account)
-	if err != nil {
-		return ListRepoRespDTO{}, err
-	}
-	if !b {
-		return ListRepoRespDTO{}, util.UnauthorizedError()
-	}
-	ret := ListRepoRespDTO{
-		Limit: reqDTO.Limit,
-	}
-	ret.TotalCount, err = repomd.CountRepo(ctx, reqDTO.ProjectId, reqDTO.SearchName)
+	p, b, err := projectmd.GetProjectUserPermDetail(ctx, reqDTO.ProjectId, reqDTO.Operator.Account)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return ListRepoRespDTO{}, util.InternalError()
+		return nil, util.InternalError()
 	}
-	if ret.TotalCount > 0 {
-		ret.RepoList, err = repomd.ListRepo(ctx, reqDTO.Offset, reqDTO.Limit, reqDTO.ProjectId, reqDTO.SearchName)
+	if !b {
+		return nil, util.UnauthorizedError()
+	}
+	// 项目管理员可看到所有仓库或者应用所有仓库权限配置
+	if p.IsAdmin || p.PermDetail.ApplyDefaultRepoPerm {
+		repoList, err := repomd.ListAllRepo(ctx, reqDTO.ProjectId)
 		if err != nil {
 			logger.Logger.WithContext(ctx).Error(err)
-			return ListRepoRespDTO{}, util.InternalError()
+			return nil, util.InternalError()
 		}
-		if len(ret.RepoList) > 0 {
-			ret.Cursor = ret.RepoList[len(ret.RepoList)-1].Id
-		}
+		return repoList, nil
 	}
-	return ret, nil
+	// 通过可访问仓库id查询
+	permList := p.PermDetail.RepoPermList
+	repoIdList, _ := listutil.Map(permList, func(t perm.RepoPermWithId) (string, error) {
+		return t.RepoId, nil
+	})
+	repoList, err := repomd.ListRepoByIdList(ctx, reqDTO.ProjectId, repoIdList)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return nil, util.InternalError()
+	}
+	return repoList, nil
 }
 
 // CatFile 展示文件内容
@@ -104,10 +109,14 @@ func CatFile(ctx context.Context, reqDTO CatFileReqDTO) (git.FileMode, string, e
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	if _, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator); err != nil {
+	repo, p, err := getPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	if err != nil {
 		return "", "", err
 	}
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoId)
+	if !p.GetRepoPerm(repo.RepoId).CanAccess {
+		return "", "", util.UnauthorizedError()
+	}
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
 	fileMode, content, _, err := git.GetFileContentByRef(ctx, absPath, reqDTO.RefName, reqDTO.FileName)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
@@ -123,9 +132,12 @@ func TreeRepo(ctx context.Context, reqDTO TreeRepoReqDTO) (TreeRepoRespDTO, erro
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	repo, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	repo, p, err := getPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
 	if err != nil {
 		return TreeRepoRespDTO{}, err
+	}
+	if !p.GetRepoPerm(repo.RepoId).CanAccess {
+		return TreeRepoRespDTO{}, util.UnauthorizedError()
 	}
 	// 空仓库 需要推代码
 	if repo.IsEmpty {
@@ -134,7 +146,7 @@ func TreeRepo(ctx context.Context, reqDTO TreeRepoReqDTO) (TreeRepoRespDTO, erro
 	if reqDTO.Dir == "" {
 		reqDTO.Dir = "."
 	}
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoId)
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
 	commit, err := git.GetFileLastCommit(ctx, absPath, reqDTO.RefName, reqDTO.Dir)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
@@ -205,11 +217,15 @@ func InitRepo(ctx context.Context, reqDTO InitRepoReqDTO) error {
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	// 校验项目信息
-	b, err := projectmd.ProjectUserExists(ctx, reqDTO.ProjectId, reqDTO.Operator.Account)
+	p, b, err := projectmd.GetProjectUserPermDetail(ctx, reqDTO.ProjectId, reqDTO.Operator.Account)
 	if err != nil {
 		return err
 	}
 	if !b {
+		return util.UnauthorizedError()
+	}
+	// 是否可创建项目
+	if p.PermDetail.ProjectPerm.CanInitRepo {
 		return util.UnauthorizedError()
 	}
 	// 相对路径
@@ -310,25 +326,18 @@ func DeleteRepo(ctx context.Context, reqDTO DeleteRepoReqDTO) error {
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	repo, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	repo, p, err := getPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
 	if err != nil {
 		return err
 	}
-	// 如果不是系统管理员 检查仓库管理员权限
-	if !reqDTO.Operator.IsAdmin {
-		b, err := repomd.CheckRepoUserExists(ctx, reqDTO.RepoId, reqDTO.Operator.Account, repomd.Maintainer)
-		if err != nil {
-			logger.Logger.WithContext(ctx).Error(err)
-			return util.InternalError()
-		}
-		if !b {
-			return util.UnauthorizedError()
-		}
+	// 是否可删除权限
+	if !p.ProjectPerm.CanDeleteRepo {
+		return util.UnauthorizedError()
 	}
 	// 拼接绝对路径
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoId)
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
 	logger.Logger.WithContext(ctx).Infof("user: %s delete repo: %s", reqDTO.Operator.Account, absPath)
-	if err := mysqlstore.WithTx(ctx, func(ctx context.Context) error {
+	if err = mysqlstore.WithTx(ctx, func(ctx context.Context) error {
 		_, err := repomd.DeleteRepo(ctx, repo)
 		if err != nil {
 			return err
@@ -357,10 +366,15 @@ func AllBranches(ctx context.Context, reqDTO AllBranchesReqDTO) ([]string, error
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	// 校验权限
-	if _, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator); err != nil {
+	repo, p, err := getPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	if err != nil {
 		return nil, err
 	}
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoId)
+	// 是否可访问
+	if !p.GetRepoPerm(repo.RepoId).CanAccess {
+		return nil, util.UnauthorizedError()
+	}
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
 	branchList, err := git.GetAllBranchList(ctx, absPath)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
@@ -377,10 +391,15 @@ func AllTags(ctx context.Context, reqDTO AllTagsReqDTO) ([]string, error) {
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	// 校验权限
-	if _, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator); err != nil {
+	repo, p, err := getPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	if err != nil {
 		return nil, err
 	}
-	absPath := filepath.Join(setting.RepoDir(), reqDTO.RepoId)
+	// 是否可访问
+	if !p.GetRepoPerm(repo.RepoId).CanAccess {
+		return nil, util.UnauthorizedError()
+	}
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
 	tagList, err := git.GetAllTagList(ctx, absPath)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
@@ -389,30 +408,226 @@ func AllTags(ctx context.Context, reqDTO AllTagsReqDTO) ([]string, error) {
 	return tagList, nil
 }
 
-func checkPerm(ctx context.Context, repoId string, operator usermd.UserInfo) (repomd.Repo, error) {
+// Gc git gc
+func Gc(ctx context.Context, reqDTO GcReqDTO) error {
+	if err := reqDTO.IsValid(); err != nil {
+		return err
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	// 校验权限
+	repo, p, err := getPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	if err != nil {
+		return err
+	}
+	// 是否可访问
+	if !p.GetRepoPerm(repo.RepoId).CanAccess {
+		return util.UnauthorizedError()
+	}
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
+	if err = git.Gc(ctx, absPath); err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	size, err := git.GetRepoSize(absPath)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	totalSize := repo.LfsSize + repo.WikiSize + size
+	if err = repomd.UpdateTotalAndGitSize(ctx, reqDTO.RepoId, totalSize, size); err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	return nil
+}
+
+func DiffCommits(ctx context.Context, reqDTO DiffCommitsReqDTO) (DiffCommitsRespDTO, error) {
+	if err := reqDTO.IsValid(); err != nil {
+		return DiffCommitsRespDTO{}, err
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	// 校验权限
+	repo, p, err := getPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	if err != nil {
+		return DiffCommitsRespDTO{}, err
+	}
+	if !p.GetRepoPerm(repo.RepoId).CanAccess {
+		return DiffCommitsRespDTO{}, util.UnauthorizedError()
+	}
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
+	if !git.CheckExists(ctx, absPath, reqDTO.Head) {
+		return DiffCommitsRespDTO{}, util.InvalidArgsError()
+	}
+	if !git.CheckExists(ctx, absPath, reqDTO.Target) {
+		return DiffCommitsRespDTO{}, util.InvalidArgsError()
+	}
+	info, err := git.GetDiffCommitsInfo(ctx, absPath, reqDTO.Target, reqDTO.Head)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return DiffCommitsRespDTO{}, util.InternalError()
+	}
+	ret := DiffCommitsRespDTO{
+		Target:       info.Target,
+		Head:         info.Head,
+		TargetCommit: commit2Dto(info.TargetCommit),
+		HeadCommit:   commit2Dto(info.HeadCommit),
+		NumFiles:     info.NumFiles,
+		DiffNumsStats: DiffNumsStatInfoDTO{
+			FileChangeNums: info.DiffNumsStats.FileChangeNums,
+			InsertNums:     info.DiffNumsStats.InsertNums,
+			DeleteNums:     info.DiffNumsStats.DeleteNums,
+		},
+		ConflictFiles: info.ConflictFiles,
+	}
+	ret.DiffNumsStats.Stats, _ = listutil.Map(info.DiffNumsStats.Stats, func(t git.DiffNumsStat) (DiffNumsStatDTO, error) {
+		return DiffNumsStatDTO{
+			RawPath:    t.Path,
+			Path:       path.Base(t.Path),
+			TotalNums:  t.TotalNums,
+			InsertNums: t.InsertNums,
+			DeleteNums: t.DeleteNums,
+		}, nil
+	})
+	ret.Commits, _ = listutil.Map(info.Commits, func(t git.Commit) (CommitDTO, error) {
+		return commit2Dto(t), nil
+	})
+	ret.CanMerge = len(ret.Commits) > 0 && len(ret.ConflictFiles) == 0
+	return ret, nil
+}
+
+func DiffFile(ctx context.Context, reqDTO DiffFileReqDTO) (DiffFileRespDTO, error) {
+	if err := reqDTO.IsValid(); err != nil {
+		return DiffFileRespDTO{}, err
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	// 校验权限
+	repo, p, err := getPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	if err != nil {
+		return DiffFileRespDTO{}, err
+	}
+	if !p.GetRepoPerm(repo.RepoId).CanAccess {
+		return DiffFileRespDTO{}, util.UnauthorizedError()
+	}
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
+	if !git.CheckExists(ctx, absPath, reqDTO.Target) {
+		return DiffFileRespDTO{}, util.InvalidArgsError()
+	}
+	if !git.CheckExists(ctx, absPath, reqDTO.Head) {
+		return DiffFileRespDTO{}, util.InvalidArgsError()
+	}
+	d, err := git.GetDiffFileDetail(ctx, absPath, reqDTO.Target, reqDTO.Head, reqDTO.FileName)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return DiffFileRespDTO{}, err
+	}
+	ret := DiffFileRespDTO{
+		FilePath:    d.FilePath,
+		OldMode:     d.OldMode,
+		Mode:        d.Mode,
+		IsSubModule: d.IsSubModule,
+		FileType:    d.FileType,
+		IsBinary:    d.IsBinary,
+		RenameFrom:  d.RenameFrom,
+		RenameTo:    d.RenameTo,
+		CopyFrom:    d.CopyFrom,
+		CopyTo:      d.CopyTo,
+	}
+	ret.Lines, _ = listutil.Map(d.Lines, func(t git.DiffLine) (DiffLineDTO, error) {
+		return DiffLineDTO{
+			Index:   t.Index,
+			LeftNo:  t.LeftNo,
+			Prefix:  t.Prefix,
+			RightNo: t.RightNo,
+			Text:    t.Text,
+		}, nil
+	})
+	return ret, nil
+}
+
+func commit2Dto(commit git.Commit) CommitDTO {
+	return CommitDTO{
+		Author:        commit.Author,
+		Committer:     commit.Committer,
+		AuthoredDate:  commit.AuthorSigTime,
+		CommittedDate: commit.CommitSigTime,
+		CommitMsg:     commit.CommitMsg,
+		CommitId:      commit.Id,
+		ShortId:       util.LongCommitId2ShortId(commit.Id),
+	}
+}
+
+func ShowDiffTextContent(ctx context.Context, reqDTO ShowDiffTextContentReqDTO) ([]DiffLineDTO, error) {
+	if err := reqDTO.IsValid(); err != nil {
+		return nil, err
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	// 校验权限
+	repo, p, err := getPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	if err != nil {
+		return nil, err
+	}
+	if !p.GetRepoPerm(repo.RepoId).CanAccess {
+		return nil, util.UnauthorizedError()
+	}
+	absPath := filepath.Join(setting.RepoDir(), repo.Path)
+	if !git.CheckRefIsCommit(ctx, absPath, reqDTO.CommitId) {
+		return nil, util.InvalidArgsError()
+	}
+	var startLine int
+	if reqDTO.Direction == UpDirection {
+		if reqDTO.Limit < 0 {
+			startLine = 0
+		} else {
+			startLine = reqDTO.Offset - reqDTO.Limit
+		}
+	} else {
+		startLine = reqDTO.Offset
+	}
+	if startLine < 0 {
+		startLine = 0
+	}
+	lineList, err := git.ShowFileTextContentByCommitId(ctx, absPath, reqDTO.CommitId, reqDTO.FileName, startLine, reqDTO.Limit)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return nil, util.InternalError()
+	}
+	ret := make([]DiffLineDTO, 0, len(lineList))
+	for i, line := range lineList {
+		n := startLine + i
+		ret = append(ret, DiffLineDTO{
+			Index:   i,
+			LeftNo:  n,
+			Prefix:  git.NormalLinePrefix,
+			RightNo: n,
+			Text:    line,
+		})
+	}
+	return ret, nil
+}
+
+func getPerm(ctx context.Context, repoId string, operator usermd.UserInfo) (repomd.Repo, perm.Detail, error) {
 	repo, b, err := repomd.GetByRepoId(ctx, repoId)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return repomd.Repo{}, util.InternalError()
+		return repomd.Repo{}, perm.Detail{}, util.InternalError()
 	}
 	if !b {
-		return repomd.Repo{}, util.InvalidArgsError()
+		return repomd.Repo{}, perm.Detail{}, util.InvalidArgsError()
 	}
-	b, err = projectmd.ProjectUserExists(ctx, repo.ProjectId, operator.Account)
+	if operator.IsAdmin {
+		return repo, perm.DefaultPermDetail, nil
+	}
+	p, b, err := projectmd.GetProjectUserPermDetail(ctx, repo.ProjectId, operator.Account)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return repomd.Repo{}, util.InternalError()
+		return repomd.Repo{}, perm.Detail{}, util.InternalError()
 	}
 	if !b {
-		return repomd.Repo{}, util.UnauthorizedError()
+		return repomd.Repo{}, perm.Detail{}, util.UnauthorizedError()
 	}
-	b, err = repomd.CheckRepoUserExists(ctx, repoId, operator.Account, repomd.Guest, repomd.Maintainer, repomd.Developer)
-	if err != nil {
-		logger.Logger.WithContext(ctx).Error(err)
-		return repomd.Repo{}, util.InternalError()
-	}
-	if !b {
-		return repomd.Repo{}, util.UnauthorizedError()
-	}
-	return repo, nil
+	return repo, p.PermDetail, nil
 }

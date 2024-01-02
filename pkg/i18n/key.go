@@ -44,6 +44,10 @@ const (
 const (
 	ProjectInvalidId Key = "project.invalidId"
 	ProjectNotFound  Key = "project.notFound"
+
+	ProjectAdminUserGroupName           Key = "project.adminUserGroupName"
+	ProjectUserGroupHasUserWhenDel      Key = "project.userGroupHasUserWhenDel"
+	ProjectUserGroupUpdateAdminNotAllow Key = "project.updateProjectUserAdminGroupNotAllow"
 )
 
 const (
@@ -76,12 +80,10 @@ const (
 )
 
 const (
-	RepoDeveloper      Key = "repo.developer"
-	RepoMaintainer     Key = "repo.maintainer"
-	RepoGuest          Key = "repo.guestUser"
-	RepoCodeReviewer   Key = "repo.codeReviewer"
-	RepoProhibitedUser Key = "repo.prohibitedUser"
-	RepoUnknownUser    Key = "repo.unknownUser"
+	RepoOpenStatus    Key = "repo.openStatus"
+	RepoClosedStatus  Key = "repo.closedStatus"
+	RepoDeletedStatus Key = "repo.deletedStatus"
+	RepoUnknownStatus Key = "repo.unknownStatus"
 )
 
 const (
@@ -141,6 +143,10 @@ var (
 		ProjectInvalidId: "项目id不合法",
 		ProjectNotFound:  "项目不存在",
 
+		ProjectAdminUserGroupName:           "项目管理员",
+		ProjectUserGroupHasUserWhenDel:      "该项目组存在关联用户, 无法删除",
+		ProjectUserGroupUpdateAdminNotAllow: "不允许编辑项目管理员权限",
+
 		TimeBeforeSecondUnit: "秒前",
 		TimeBeforeMinuteUnit: "分钟前",
 		TimeBeforeHourUnit:   "小时前",
@@ -148,12 +154,10 @@ var (
 		TimeBeforeMonthUnit:  "月前",
 		TimeBeforeYearUnit:   "年前",
 
-		RepoDeveloper:      "开发者",
-		RepoMaintainer:     "管理员",
-		RepoGuest:          "访客",
-		RepoCodeReviewer:   "代码评审员",
-		RepoProhibitedUser: "禁止访问",
-		RepoUnknownUser:    "未知类型",
+		RepoOpenStatus:    "打开状态",
+		RepoClosedStatus:  "归档状态",
+		RepoUnknownStatus: "未知状态",
+		RepoDeletedStatus: "删除状态",
 
 		PullRequestCannotMerge:   "无法合并",
 		PullRequestOpenStatus:    "已打开",

@@ -151,7 +151,11 @@ func checkAccessMode(ctx context.Context, user usermd.UserInfo, repoPath string,
 	if !b {
 		return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.RepoNotFound))
 	}
-	b, err = projectmd.ProjectUserExists(ctx, repo.ProjectId, user.Account)
+	// 系统管理员有所有的权限
+	if user.IsAdmin {
+		return repo, nil
+	}
+	p, b, err := projectmd.GetProjectUserPermDetail(ctx, repo.ProjectId, user.Account)
 	if err != nil {
 		logger.Logger.Error(err)
 		return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemInternalError))
@@ -161,22 +165,12 @@ func checkAccessMode(ctx context.Context, user usermd.UserInfo, repoPath string,
 	}
 	if accessMode == perm.AccessModeWrite {
 		// 检查权限
-		b, err = repomd.CheckRepoUserExists(ctx, repo.RepoId, user.Account, repomd.Developer, repomd.Maintainer)
-		if err != nil {
-			logger.Logger.Error(err)
-			return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemInternalError))
-		}
-		if !b {
+		if !p.PermDetail.GetRepoPerm(repo.RepoId).CanPush {
 			return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
 		}
 	} else if accessMode == perm.AccessModeRead {
 		// 检查权限
-		b, err = repomd.CheckRepoUserExists(ctx, repo.RepoId, user.Account, repomd.Guest, repomd.Developer, repomd.Maintainer)
-		if err != nil {
-			logger.Logger.Error(err)
-			return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemInternalError))
-		}
-		if !b {
+		if !p.PermDetail.GetRepoPerm(repo.RepoId).CanAccess {
 			return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
 		}
 	} else {
