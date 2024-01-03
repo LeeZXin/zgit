@@ -17,3 +17,9 @@ type InsertUserReqDTO struct {
 	IsAdmin   bool
 	AvatarUrl string
 }
+
+type ListUserReqDTO struct {
+	Account string
+	Offset  int64
+	Limit   int
+}

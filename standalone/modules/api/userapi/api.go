@@ -2,6 +2,8 @@ package userapi
 
 import (
 	"github.com/LeeZXin/zsf-utils/ginutil"
+	"github.com/LeeZXin/zsf-utils/listutil"
+	"github.com/LeeZXin/zsf-utils/timeutil"
 	"github.com/LeeZXin/zsf/http/httpserver"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -107,7 +109,36 @@ func updateUser(c *gin.Context) {
 }
 
 func listUser(c *gin.Context) {
-
+	var req ListUserReqVO
+	if util.ShouldBindJSON(&req, c) {
+		respDTO, err := usersrv.ListUser(c.Request.Context(), usersrv.ListUserReqDTO{
+			Account:  req.Account,
+			Offset:   req.Offset,
+			Limit:    req.Limit,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		ret := ListUserRespVO{
+			BaseResp: ginutil.DefaultSuccessResp,
+			Cursor:   respDTO.Cursor,
+		}
+		ret.UserList, _ = listutil.Map(respDTO.UserList, func(t usersrv.UserDTO) (UserVO, error) {
+			return UserVO{
+				Account:      t.Account,
+				Name:         t.Name,
+				Email:        t.Email,
+				IsAdmin:      t.IsAdmin,
+				IsProhibited: t.IsProhibited,
+				AvatarUrl:    t.AvatarUrl,
+				Created:      t.Created.Format(timeutil.DefaultTimeFormat),
+				Updated:      t.Updated.Format(timeutil.DefaultTimeFormat),
+			}, nil
+		})
+		c.JSON(http.StatusOK, ret)
+	}
 }
 
 func changePassword(c *gin.Context) {
@@ -115,14 +146,14 @@ func changePassword(c *gin.Context) {
 }
 
 func register(c *gin.Context) {
-	var reqVO RegisterUserReqVO
-	if util.ShouldBindJSON(&reqVO, c) {
+	var req RegisterUserReqVO
+	if util.ShouldBindJSON(&req, c) {
 		err := usersrv.RegisterUser(c.Request.Context(), usersrv.RegisterUserReqDTO{
-			Account:   reqVO.Account,
-			Name:      reqVO.Name,
-			Email:     reqVO.Email,
-			Password:  reqVO.Password,
-			AvatarUrl: reqVO.AvatarUrl,
+			Account:   req.Account,
+			Name:      req.Name,
+			Email:     req.Email,
+			Password:  req.Password,
+			AvatarUrl: req.AvatarUrl,
 		})
 		if err != nil {
 			util.HandleApiErr(err, c)

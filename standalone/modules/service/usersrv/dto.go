@@ -3,6 +3,7 @@ package usersrv
 import (
 	"github.com/LeeZXin/zsf-utils/bizerr"
 	"regexp"
+	"time"
 	"zgit/pkg/apicode"
 	i18n2 "zgit/pkg/i18n"
 	"zgit/standalone/modules/model/usermd"
@@ -103,4 +104,43 @@ func (r *DeleteUserReqDTO) IsValid() error {
 		return util.InternalError()
 	}
 	return nil
+}
+
+type ListUserReqDTO struct {
+	Account  string
+	Offset   int64
+	Limit    int
+	Operator usermd.UserInfo
+}
+
+func (r *ListUserReqDTO) IsValid() error {
+	if r.Offset < 0 {
+		return util.InvalidArgsError()
+	}
+	if r.Limit < 0 {
+		return util.InvalidArgsError()
+	}
+	if len(r.Account) > 32 || len(r.Account) == 0 {
+		return util.InternalError()
+	}
+	if r.Operator.Account == "" {
+		return util.InternalError()
+	}
+	return nil
+}
+
+type UserDTO struct {
+	Account      string
+	Name         string
+	Email        string
+	IsAdmin      bool
+	IsProhibited bool
+	AvatarUrl    string
+	Created      time.Time
+	Updated      time.Time
+}
+
+type ListUserRespDTO struct {
+	UserList []UserDTO
+	Cursor   int64
 }

@@ -3,6 +3,7 @@ package usersrv
 import (
 	"context"
 	"github.com/LeeZXin/zsf-utils/bizerr"
+	"github.com/LeeZXin/zsf-utils/listutil"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/xorm/mysqlstore"
 	"time"
@@ -23,8 +24,8 @@ func GetUserInfoByAccount(ctx context.Context, account string) (usermd.UserInfo,
 	defer closer.Close()
 	user, b, err := usermd.GetByAccount(ctx, account)
 	if err != nil {
-		logger.Logger.Errorf("GetUserInfoByAccount err: %v", err)
-		return usermd.UserInfo{}, false, bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.SystemInvalidArgs))
+		logger.Logger.Error(err)
+		return usermd.UserInfo{}, false, util.InternalError()
 	}
 	if !b {
 		return usermd.UserInfo{}, false, nil
@@ -96,6 +97,7 @@ func InsertUser(ctx context.Context, reqDTO InsertUserReqDTO) error {
 	if err := reqDTO.IsValid(); err != nil {
 		return err
 	}
+	// 只有系统管理员才能操作
 	if !reqDTO.Operator.IsAdmin {
 		return util.UnauthorizedError()
 	}
@@ -123,6 +125,7 @@ func RegisterUser(ctx context.Context, reqDTO RegisterUserReqDTO) error {
 	if err := reqDTO.IsValid(); err != nil {
 		return err
 	}
+	// 检查是否已禁用该规则
 	cfg, err := cfgsrv.GetSysCfgWithCache(ctx)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
@@ -161,8 +164,9 @@ func DeleteUser(ctx context.Context, reqDTO DeleteUserReqDTO) error {
 	if err := reqDTO.IsValid(); err != nil {
 		return err
 	}
+	// 只有系统管理员才能操作
 	if !reqDTO.Operator.IsAdmin {
-		return bizerr.NewBizErr(apicode.NotAdminCode.Int(), i18n.GetByKey(i18n.SystemNotAdmin))
+		return util.UnauthorizedError()
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
@@ -183,4 +187,43 @@ func DeleteUser(ctx context.Context, reqDTO DeleteUserReqDTO) error {
 	// 删除用户登录状态
 	apisession.GetStore().DeleteByAccount(reqDTO.Account)
 	return nil
+}
+
+// ListUser 展示用户列表
+func ListUser(ctx context.Context, reqDTO ListUserReqDTO) (ListUserRespDTO, error) {
+	if err := reqDTO.IsValid(); err != nil {
+		return ListUserRespDTO{}, err
+	}
+	// 只有系统管理员才能操作
+	if !reqDTO.Operator.IsAdmin {
+		return ListUserRespDTO{}, util.UnauthorizedError()
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	userList, err := usermd.ListUser(ctx, usermd.ListUserReqDTO{
+		Account: reqDTO.Account,
+		Offset:  reqDTO.Offset,
+		Limit:   reqDTO.Limit,
+	})
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return ListUserRespDTO{}, util.InternalError()
+	}
+	ret := ListUserRespDTO{}
+	ret.UserList, _ = listutil.Map(userList, func(t usermd.User) (UserDTO, error) {
+		return UserDTO{
+			Account:      t.Account,
+			Name:         t.Name,
+			Email:        t.Email,
+			IsAdmin:      t.IsAdmin,
+			IsProhibited: t.IsProhibited,
+			AvatarUrl:    t.AvatarUrl,
+			Created:      t.Created,
+			Updated:      t.Updated,
+		}, nil
+	})
+	if len(userList) > 0 {
+		ret.Cursor = userList[len(userList)-1].Id
+	}
+	return ret, nil
 }

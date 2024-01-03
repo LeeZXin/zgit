@@ -1,6 +1,8 @@
 package userapi
 
-import "github.com/LeeZXin/zsf-utils/ginutil"
+import (
+	"github.com/LeeZXin/zsf-utils/ginutil"
+)
 
 type LoginReqVO struct {
 	Account  string `json:"account"`
@@ -38,4 +40,27 @@ type UpdateUserReqVO struct {
 	Email     string `json:"email"`
 	IsAdmin   bool   `json:"isAdmin"`
 	AvatarUrl string `json:"avatarUrl"`
+}
+
+type UserVO struct {
+	Account      string `json:"account"`
+	Name         string `json:"name"`
+	Email        string `json:"email"`
+	IsAdmin      bool   `json:"isAdmin"`
+	IsProhibited bool   `json:"isProhibited"`
+	AvatarUrl    string `json:"avatarUrl"`
+	Created      string `json:"created"`
+	Updated      string `json:"updated"`
+}
+
+type ListUserReqVO struct {
+	Account string `json:"account"`
+	Offset  int64  `json:"offset"`
+	Limit   int    `json:"limit"`
+}
+
+type ListUserRespVO struct {
+	ginutil.BaseResp
+	UserList []UserVO `json:"userList"`
+	Cursor   int64    `json:"cursor"`
 }
