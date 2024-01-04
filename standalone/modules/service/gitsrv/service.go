@@ -114,7 +114,7 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 	var gitCmd *exec.Cmd
 	gitBinPath := filepath.Dir(setting.GitExecutablePath()) // e.g. /usr/bin
 	gitBinVerb := filepath.Join(gitBinPath, verb)           // e.g. /usr/bin/git-upload-pack
-	if _, err := os.Stat(gitBinVerb); err != nil {
+	if _, err = os.Stat(gitBinVerb); err != nil {
 		verbFields := strings.SplitN(verb, "-", 2)
 		if len(verbFields) == 2 {
 			gitCmd = exec.CommandContext(ctx, setting.GitExecutablePath(), verbFields[1], repoPath)
@@ -134,6 +134,7 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 			git.EnvRepoId, repo.RepoId,
 			git.EnvPusherId, operator.Account,
 			git.EnvAppUrl, setting.AppUrl(),
+			git.EnvHookToken, setting.HookToken(),
 		)...,
 	)
 	gitCmd.Env = append(gitCmd.Env, command.CommonEnvs()...)

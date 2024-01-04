@@ -2,8 +2,13 @@ package sshkeymd
 
 import (
 	"context"
+	"github.com/LeeZXin/zsf-utils/idutil"
 	"github.com/LeeZXin/zsf/xorm/xormutil"
 )
+
+func GenKeyId() string {
+	return idutil.RandomUuid()
+}
 
 func SearchByKeyContent(ctx context.Context, content string) (SshKey, bool, error) {
 	var ret SshKey
@@ -30,6 +35,7 @@ func DeleteSshKey(ctx context.Context, key SshKey) (bool, error) {
 
 func InsertSshKey(ctx context.Context, reqDTO InsertSshKeyReqDTO) (SshKey, error) {
 	p := SshKey{
+		KeyId:       GenKeyId(),
 		Account:     reqDTO.Account,
 		Name:        reqDTO.Name,
 		Fingerprint: reqDTO.Fingerprint,
@@ -38,4 +44,27 @@ func InsertSshKey(ctx context.Context, reqDTO InsertSshKeyReqDTO) (SshKey, error
 	}
 	_, err := xormutil.MustGetXormSession(ctx).Insert(&p)
 	return p, err
+}
+
+func ListSshKey(ctx context.Context, reqDTO ListSshKeyReqDTO) ([]SshKey, error) {
+	ret := make([]SshKey, 0)
+	session := xormutil.MustGetXormSession(ctx).Where("account = ?", reqDTO.Account)
+	if reqDTO.Offset > 0 {
+		session.And("id > ?", reqDTO.Offset)
+	}
+	if reqDTO.Limit > 0 {
+		session.Limit(reqDTO.Limit)
+	}
+	return ret, session.OrderBy("id asc").Find(&ret)
+}
+
+func UpdateVerifiedVar(ctx context.Context, reqDTO UpdateVerifiedVarReqDTO) (bool, error) {
+	rows, err := xormutil.MustGetXormSession(ctx).
+		Where("key_id = ?", reqDTO.KeyId).
+		Cols("verified").
+		Limit(1).
+		Update(&SshKey{
+			Verified: reqDTO.Verified,
+		})
+	return rows == 1, err
 }

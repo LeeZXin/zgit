@@ -2,8 +2,13 @@ package branchsrv
 
 import (
 	"context"
+	"fmt"
+	"github.com/LeeZXin/zsf-utils/bizerr"
+	"github.com/LeeZXin/zsf-utils/listutil"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/xorm/mysqlstore"
+	"zgit/pkg/apicode"
+	"zgit/pkg/i18n"
 	"zgit/standalone/modules/model/branchmd"
 	"zgit/standalone/modules/model/projectmd"
 	"zgit/standalone/modules/model/repomd"
@@ -29,8 +34,21 @@ func InsertProtectedBranch(ctx context.Context, reqDTO InsertProtectedBranchReqD
 	if b {
 		return util.AlreadyExistsError()
 	}
-	_, err = branchmd.InsertProtectedBranch(ctx, reqDTO.RepoId, reqDTO.Branch)
-	if err != nil {
+	for _, account := range reqDTO.Cfg.ReviewerList {
+		_, b, err = usermd.GetByAccount(ctx, account)
+		if err != nil {
+			logger.Logger.WithContext(ctx).Error(err)
+			return util.InternalError()
+		}
+		if !b {
+			return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), fmt.Sprintf(i18n.GetByKey(i18n.UserAccountNotFoundWarnFormat), account))
+		}
+	}
+	if err = branchmd.InsertProtectedBranch(ctx, branchmd.InsertProtectedBranchReqDTO{
+		RepoId: reqDTO.RepoId,
+		Branch: reqDTO.Branch,
+		Cfg:    reqDTO.Cfg,
+	}); err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
 		return util.InternalError()
 	}
@@ -63,36 +81,28 @@ func DeleteProtectedBranch(ctx context.Context, reqDTO DeleteProtectedBranchReqD
 	return nil
 }
 
-func ListProtectedBranch(ctx context.Context, reqDTO ListProtectedBranchReqDTO) (ListProtectedBranchRespDTO, error) {
+func ListProtectedBranch(ctx context.Context, reqDTO ListProtectedBranchReqDTO) ([]ProtectedBranchDTO, error) {
 	if err := reqDTO.IsValid(); err != nil {
-		return ListProtectedBranchRespDTO{}, err
+		return nil, err
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
 	if err != nil {
-		return ListProtectedBranchRespDTO{}, err
+		return nil, err
 	}
-	daoDto := branchmd.ListProtectedBranchReqDTO{
-		RepoId:     reqDTO.RepoId,
-		SearchName: reqDTO.SearchName,
-		Offset:     reqDTO.Offset,
-		Limit:      reqDTO.Limit,
-	}
-	ret := ListProtectedBranchRespDTO{}
-	ret.TotalCount, err = branchmd.CountProtectedBranch(ctx, daoDto)
+	branchList, err := branchmd.ListProtectedBranch(ctx, reqDTO.RepoId)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return ListProtectedBranchRespDTO{}, util.InternalError()
+		return nil, util.InternalError()
 	}
-	if ret.TotalCount > 0 {
-		ret.Data, err = branchmd.ListProtectedBranch(ctx, daoDto)
-		if err != nil {
-			logger.Logger.WithContext(ctx).Error(err)
-			return ListProtectedBranchRespDTO{}, util.InternalError()
-		}
-		ret.Cursor = ret.Data[len(ret.Data)-1].Id
-	}
+	ret, _ := listutil.Map(branchList, func(t branchmd.ProtectedBranchDTO) (ProtectedBranchDTO, error) {
+		return ProtectedBranchDTO{
+			RepoId: t.RepoId,
+			Branch: t.Branch,
+			Cfg:    t.Cfg,
+		}, nil
+	})
 	return ret, nil
 }
 

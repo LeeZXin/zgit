@@ -2,11 +2,13 @@ package branchapi
 
 import (
 	"github.com/LeeZXin/zsf-utils/ginutil"
+	"zgit/standalone/modules/model/branchmd"
 )
 
 type InsertProtectedBranchReqVO struct {
-	RepoId string `json:"repoId"`
-	Branch string `json:"branch"`
+	RepoId string                      `json:"repoId"`
+	Branch string                      `json:"branch"`
+	Cfg    branchmd.ProtectedBranchCfg `json:"cfg"`
 }
 
 type DeleteProtectedBranchReqVO struct {
@@ -15,20 +17,15 @@ type DeleteProtectedBranchReqVO struct {
 }
 
 type ListProtectedBranchReqVO struct {
-	RepoId     string `json:"repoId"`
-	SearchName string `json:"searchName"`
-	Offset     int64  `json:"offset"`
-	Limit      int    `json:"limit"`
+	RepoId string `json:"repoId"`
 }
 
 type ProtectedBranchVO struct {
-	Branch  string `json:"branch"`
-	Created string `json:"created"`
+	Branch string `json:"branch"`
+	Cfg    branchmd.ProtectedBranchCfg
 }
 
 type ListProtectedBranchRespVO struct {
 	ginutil.BaseResp
-	Branches   []ProtectedBranchVO
-	Cursor     int64
-	TotalCount int64
+	Branches []ProtectedBranchVO
 }

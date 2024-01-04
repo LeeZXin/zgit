@@ -14,7 +14,7 @@ import (
 
 func InitApi() {
 	httpserver.AppendRegisterRouterFunc(func(e *gin.Engine) {
-		group := e.Group("/api/user")
+		group := e.Group("/api/login")
 		{
 			// 登录
 			group.POST("/login", login)
@@ -22,26 +22,31 @@ func InitApi() {
 			group.POST("/register", register)
 			// 退出登录
 			group.Any("/loginOut", apicommon.CheckLogin, loginOut)
+		}
+		group = e.Group("/api/user", apicommon.CheckLogin)
+		{
 			// 新增用户
-			group.POST("/insert", apicommon.CheckLogin, insertUser)
+			group.POST("/insert", insertUser)
 			// 删除用户
-			group.POST("/delete", apicommon.CheckLogin, deleteUser)
+			group.POST("/delete", deleteUser)
 			// 更新用户
-			group.POST("/update", apicommon.CheckLogin, updateUser)
+			group.POST("/update", updateUser)
 			// 展示用户列表
-			group.POST("/list", apicommon.CheckLogin, listUser)
+			group.POST("/list", listUser)
 			// 更新密码
-			group.POST("/changePassword", apicommon.CheckLogin, changePassword)
+			group.POST("/updatePassword", updatePassword)
+			// 系统管理员设置
+			group.POST("/setAdmin", updateAdmin)
 		}
 	})
 }
 
 func login(c *gin.Context) {
-	var reqVO LoginReqVO
-	if util.ShouldBindJSON(&reqVO, c) {
+	var req LoginReqVO
+	if util.ShouldBindJSON(&req, c) {
 		sessionId, err := usersrv.Login(c.Request.Context(), usersrv.LoginReqDTO{
-			Account:  reqVO.Account,
-			Password: reqVO.Password,
+			Account:  req.Account,
+			Password: req.Password,
 		})
 		if err != nil {
 			util.HandleApiErr(err, c)
@@ -55,16 +60,13 @@ func login(c *gin.Context) {
 }
 
 func loginOut(c *gin.Context) {
-	sessionId := apicommon.GetSessionId(c)
-	if sessionId != "" {
-		err := usersrv.LoginOut(c.Request.Context(), usersrv.LoginOutReqDTO{
-			SessionId: sessionId,
-			Operator:  apicommon.MustGetLoginUser(c),
-		})
-		if err != nil {
-			util.HandleApiErr(err, c)
-			return
-		}
+	err := usersrv.LoginOut(c.Request.Context(), usersrv.LoginOutReqDTO{
+		SessionId: apicommon.GetSessionId(c),
+		Operator:  apicommon.MustGetLoginUser(c),
+	})
+	if err != nil {
+		util.HandleApiErr(err, c)
+		return
 	}
 	c.JSON(http.StatusOK, ginutil.DefaultSuccessResp)
 }
@@ -90,10 +92,10 @@ func insertUser(c *gin.Context) {
 }
 
 func deleteUser(c *gin.Context) {
-	var reqVO DeleteUserReqVO
-	if util.ShouldBindJSON(&reqVO, c) {
+	var req DeleteUserReqVO
+	if util.ShouldBindJSON(&req, c) {
 		err := usersrv.DeleteUser(c.Request.Context(), usersrv.DeleteUserReqDTO{
-			Account:  reqVO.Account,
+			Account:  req.Account,
 			Operator: apicommon.MustGetLoginUser(c),
 		})
 		if err != nil {
@@ -105,7 +107,20 @@ func deleteUser(c *gin.Context) {
 }
 
 func updateUser(c *gin.Context) {
-
+	var req UpdateUserReqVO
+	if util.ShouldBindJSON(&req, c) {
+		err := usersrv.UpdateUser(c.Request.Context(), usersrv.UpdateUserReqDTO{
+			Account:  req.Account,
+			Name:     req.Name,
+			Email:    req.Email,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+		} else {
+			c.JSON(http.StatusOK, ginutil.DefaultSuccessResp)
+		}
+	}
 }
 
 func listUser(c *gin.Context) {
@@ -141,8 +156,20 @@ func listUser(c *gin.Context) {
 	}
 }
 
-func changePassword(c *gin.Context) {
-
+func updatePassword(c *gin.Context) {
+	var req UpdatePasswordReqVO
+	if util.ShouldBindJSON(&req, c) {
+		err := usersrv.UpdatePassword(c.Request.Context(), usersrv.UpdatePasswordReqDTO{
+			Account:  req.Account,
+			Password: req.Password,
+			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+		} else {
+			c.JSON(http.StatusOK, ginutil.DefaultSuccessResp)
+		}
+	}
 }
 
 func register(c *gin.Context) {
@@ -154,6 +181,22 @@ func register(c *gin.Context) {
 			Email:     req.Email,
 			Password:  req.Password,
 			AvatarUrl: req.AvatarUrl,
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+		} else {
+			c.JSON(http.StatusOK, ginutil.DefaultSuccessResp)
+		}
+	}
+}
+
+func updateAdmin(c *gin.Context) {
+	var req UpdateAdminReqVO
+	if util.ShouldBindJSON(&req, c) {
+		err := usersrv.UpdateAdmin(c.Request.Context(), usersrv.UpdateAdminReqDTO{
+			Account:  req.Account,
+			IsAdmin:  req.IsAdmin,
+			Operator: apicommon.MustGetLoginUser(c),
 		})
 		if err != nil {
 			util.HandleApiErr(err, c)

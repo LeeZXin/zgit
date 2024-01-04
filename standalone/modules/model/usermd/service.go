@@ -49,3 +49,37 @@ func ListUser(ctx context.Context, reqDTO ListUserReqDTO) ([]User, error) {
 	}
 	return ret, session.OrderBy("id asc").Find(&ret)
 }
+
+func UpdateUser(ctx context.Context, reqDTO UpdateUserReqDTO) (bool, error) {
+	rows, err := xormutil.MustGetXormSession(ctx).
+		Where("account = ?", reqDTO.Account).
+		Limit(1).
+		Cols("name", "email").
+		Update(&User{
+			Name:  reqDTO.Name,
+			Email: reqDTO.Email,
+		})
+	return rows == 1, err
+}
+
+func UpdateAdmin(ctx context.Context, reqDTO UpdateAdminReqDTO) (bool, error) {
+	rows, err := xormutil.MustGetXormSession(ctx).
+		Where("account = ?", reqDTO.Account).
+		Limit(1).
+		Cols("is_admin").
+		Update(&User{
+			IsAdmin: reqDTO.IsAdmin,
+		})
+	return rows == 1, err
+}
+
+func UpdatePassword(ctx context.Context, reqDTO UpdatePasswordReqDTO) (bool, error) {
+	rows, err := xormutil.MustGetXormSession(ctx).
+		Where("account = ?", reqDTO.Account).
+		Limit(1).
+		Cols("password").
+		Update(&User{
+			Password: reqDTO.Password,
+		})
+	return rows == 1, err
+}

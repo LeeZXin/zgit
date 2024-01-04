@@ -43,11 +43,3 @@ func GenKeyPair(keyPath string) error {
 	_, err = p.Write(public)
 	return err
 }
-
-func CalcFingerprint(publicKeyContent string) (string, error) {
-	pk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(publicKeyContent))
-	if err != nil {
-		return "", err
-	}
-	return gossh.FingerprintSHA256(pk), nil
-}

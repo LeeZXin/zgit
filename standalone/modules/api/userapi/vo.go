@@ -35,13 +35,6 @@ type DeleteUserReqVO struct {
 	Account string `json:"account"`
 }
 
-type UpdateUserReqVO struct {
-	Name      string `json:"name"`
-	Email     string `json:"email"`
-	IsAdmin   bool   `json:"isAdmin"`
-	AvatarUrl string `json:"avatarUrl"`
-}
-
 type UserVO struct {
 	Account      string `json:"account"`
 	Name         string `json:"name"`
@@ -63,4 +56,20 @@ type ListUserRespVO struct {
 	ginutil.BaseResp
 	UserList []UserVO `json:"userList"`
 	Cursor   int64    `json:"cursor"`
+}
+
+type UpdateUserReqVO struct {
+	Account string
+	Name    string
+	Email   string
+}
+
+type UpdateAdminReqVO struct {
+	Account string
+	IsAdmin bool
+}
+
+type UpdatePasswordReqVO struct {
+	Account  string
+	Password string
 }

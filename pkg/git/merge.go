@@ -39,6 +39,7 @@ type DiffCommitsInfo struct {
 }
 
 type MergeRepoOpts struct {
+	PrId    string
 	Message string
 }
 
@@ -145,7 +146,13 @@ func doMerge(ctx context.Context, repoPath string, pr DiffCommitsInfo, opts Merg
 	if _, err = command.NewCommand("push", "origin", MergeBranch+":"+pr.Head).
 		Run(ctx,
 			command.WithDir(tempDir),
-			command.WithEnv(util.JoinFields(EnvAppUrl, setting.AppUrl())),
+			command.WithEnv(
+				util.JoinFields(
+					EnvAppUrl, setting.AppUrl(),
+					EnvHookToken, setting.HookToken(),
+					EnvPrId, opts.PrId,
+				),
+			),
 		); err != nil {
 		return fmt.Errorf("git push: %v", err)
 	}

@@ -3,18 +3,17 @@ package branchapi
 import (
 	"github.com/LeeZXin/zsf-utils/ginutil"
 	"github.com/LeeZXin/zsf-utils/listutil"
-	"github.com/LeeZXin/zsf-utils/timeutil"
 	"github.com/LeeZXin/zsf/http/httpserver"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"zgit/standalone/modules/api/apicommon"
-	"zgit/standalone/modules/model/branchmd"
 	"zgit/standalone/modules/service/branchsrv"
 	"zgit/util"
 )
 
 func InitApi() {
 	httpserver.AppendRegisterRouterFunc(func(e *gin.Engine) {
+		// 保护分支
 		group := e.Group("/api/protectedBranch", apicommon.CheckLogin)
 		{
 			// 新增保护分支
@@ -31,6 +30,7 @@ func insertProtectedBranch(c *gin.Context) {
 		err := branchsrv.InsertProtectedBranch(c.Request.Context(), branchsrv.InsertProtectedBranchReqDTO{
 			RepoId:   req.RepoId,
 			Branch:   req.Branch,
+			Cfg:      req.Cfg,
 			Operator: apicommon.MustGetLoginUser(c),
 		})
 		if err != nil {
@@ -60,26 +60,21 @@ func deleteProtectedBranch(c *gin.Context) {
 func listProtectedBranch(c *gin.Context) {
 	var req ListProtectedBranchReqVO
 	if util.ShouldBindJSON(&req, c) {
-		respDTO, err := branchsrv.ListProtectedBranch(c.Request.Context(), branchsrv.ListProtectedBranchReqDTO{
-			RepoId:     req.RepoId,
-			SearchName: req.SearchName,
-			Offset:     req.Offset,
-			Limit:      req.Limit,
-			Operator:   apicommon.MustGetLoginUser(c),
+		branchList, err := branchsrv.ListProtectedBranch(c.Request.Context(), branchsrv.ListProtectedBranchReqDTO{
+			RepoId:   req.RepoId,
+			Operator: apicommon.MustGetLoginUser(c),
 		})
 		if err != nil {
 			util.HandleApiErr(err, c)
 			return
 		}
 		respVO := ListProtectedBranchRespVO{
-			BaseResp:   ginutil.DefaultSuccessResp,
-			Cursor:     respDTO.Cursor,
-			TotalCount: respDTO.TotalCount,
+			BaseResp: ginutil.DefaultSuccessResp,
 		}
-		respVO.Branches, _ = listutil.Map(respDTO.Data, func(t branchmd.ProtectedBranch) (ProtectedBranchVO, error) {
+		respVO.Branches, _ = listutil.Map(branchList, func(t branchsrv.ProtectedBranchDTO) (ProtectedBranchVO, error) {
 			return ProtectedBranchVO{
-				Branch:  t.Branch,
-				Created: t.Created.Format(timeutil.DefaultTimeFormat),
+				Branch: t.Branch,
+				Cfg:    t.Cfg,
 			}, nil
 		})
 		c.JSON(http.StatusOK, respVO)

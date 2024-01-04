@@ -13,16 +13,17 @@ const (
 )
 
 const (
-	UserInvalidId        Key = "user.invalidId"
-	UserInvalidName      Key = "user.invalidName"
-	UserInvalidEmail     Key = "user.invalidEmail"
-	UserInvalidCorpId    Key = "user.invalidCorpId"
-	UserInvalidAccount   Key = "user.invalidAccount"
-	UserInvalidSessionId Key = "user.invalidSessionId"
-	UserInvalidPassword  Key = "user.invalidPassword"
-	UserNotFound         Key = "user.notFound"
-	UserWrongPassword    Key = "user.wrongPassword"
-	UserAlreadyExists    Key = "user.alreadyExists"
+	UserInvalidId       Key = "user.invalidId"
+	UserInvalidName     Key = "user.invalidName"
+	UserInvalidEmail    Key = "user.invalidEmail"
+	UserInvalidCorpId   Key = "user.invalidCorpId"
+	UserInvalidAccount  Key = "user.invalidAccount"
+	UserInvalidPassword Key = "user.invalidPassword"
+	UserNotFound        Key = "user.notFound"
+	UserWrongPassword   Key = "user.wrongPassword"
+	UserAlreadyExists   Key = "user.alreadyExists"
+
+	UserAccountNotFoundWarnFormat Key = "user.notFoundWarnFormat"
 )
 
 const (
@@ -95,6 +96,16 @@ const (
 	PullRequestMergeMessage  Key = "pullRequest.mergeMessage"
 )
 
+const (
+	SshKeyAlreadyVerified    Key = "sshKey.alreadyVerified"
+	SshKeyVerifyTokenExpired Key = "sshKey.verifyTokenExpired"
+	SshKeyVerifyFailed       Key = "sshKey.verifyFailed"
+)
+
+const (
+	ProtectedBranchInvalidReviewCountWhenCreatePr Key = "protectedBranch.invalidReviewCountWhenCreatePr"
+)
+
 var (
 	defaultRetMap = map[Key]string{
 		SystemInternalError: "系统异常",
@@ -105,15 +116,16 @@ var (
 		SystemUnimplemented: "方法未实现",
 		SystemAlreadyExists: "数据已存在",
 
-		UserInvalidId:       "用户id不合法",
-		UserInvalidName:     "用户姓名不合法",
-		UserInvalidEmail:    "用户邮箱不合法",
-		UserInvalidCorpId:   "企业Id不合法",
-		UserInvalidAccount:  "用户账号不合法",
-		UserInvalidPassword: "用户密码不合法",
-		UserNotFound:        "用户不存在",
-		UserWrongPassword:   "密码不正确",
-		UserAlreadyExists:   "用户已存在",
+		UserInvalidId:                 "用户id不合法",
+		UserInvalidName:               "用户姓名不合法",
+		UserInvalidEmail:              "用户邮箱不合法",
+		UserInvalidCorpId:             "企业Id不合法",
+		UserInvalidAccount:            "用户账号不合法",
+		UserInvalidPassword:           "用户密码不合法",
+		UserNotFound:                  "用户不存在",
+		UserWrongPassword:             "密码不正确",
+		UserAlreadyExists:             "用户已存在",
+		UserAccountNotFoundWarnFormat: "用户%s不存在",
 
 		SshKeyFormatError:    "ssh公钥格式错误",
 		SshKeyAlreadyExists:  "ssh公钥已存在",
@@ -165,6 +177,12 @@ var (
 		PullRequestMergedStatus:  "已合并",
 		PullRequestUnknownStatus: "未知",
 		PullRequestMergeMessage:  "合并请求: %s, 申请人: %s, 合并人: %s",
+
+		SshKeyAlreadyVerified:    "已经校验过",
+		SshKeyVerifyTokenExpired: "token已失效",
+		SshKeyVerifyFailed:       "校验失败",
+
+		ProtectedBranchInvalidReviewCountWhenCreatePr: "保护分支代码评审者数量不合法",
 	}
 )
 

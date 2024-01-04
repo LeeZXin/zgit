@@ -23,3 +23,19 @@ type ListUserReqDTO struct {
 	Offset  int64
 	Limit   int
 }
+
+type UpdateUserReqDTO struct {
+	Account string
+	Name    string
+	Email   string
+}
+
+type UpdateAdminReqDTO struct {
+	Account string
+	IsAdmin bool
+}
+
+type UpdatePasswordReqDTO struct {
+	Account  string
+	Password string
+}

@@ -13,12 +13,15 @@ const (
 	DataAlreadyExistsCode
 	WrongLoginPasswordCode
 	NotLoginCode
-	NotAdminCode
 	UnauthorizedCode
 	UserAlreadyExistsCode
 	PullRequestCannotMergeCode
 	ProjectUserGroupHasUserWhenDelCode
 	CannotUpdateProjectUserAdminGroupCode
+	SshKeyAlreadyVerifiedCode
+	SshKeyVerifyTokenExpiredCode
+	SshKeyVerifyFailedCode
+	InvalidReviewCountWhenCreatePrCode
 )
 
 func (c Code) Int() int {

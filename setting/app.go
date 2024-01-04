@@ -26,6 +26,8 @@ var (
 	lang = static.GetString("app.lang")
 
 	standaloneCorpId = static.GetString("app.corpId")
+
+	hookToken = static.GetString("hook.token")
 )
 
 func init() {
@@ -141,4 +143,8 @@ func Lang() string {
 
 func StandaloneCorpId() string {
 	return standaloneCorpId
+}
+
+func HookToken() string {
+	return hookToken
 }

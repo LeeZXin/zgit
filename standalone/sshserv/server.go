@@ -26,11 +26,19 @@ func publicKeyHandler(ctx ssh.Context, key ssh.PublicKey) bool {
 		return false
 	}
 	pubKey, b, err := sshkeysrv.SearchByKeyContent(ctx, key)
-	if !b || err != nil {
+	if err != nil {
+		logger.Logger.Error(err)
+		return false
+	}
+	if !b {
 		return false
 	}
 	userInfo, b, err := usersrv.GetUserInfoByAccount(ctx, pubKey.Account)
-	if !b || err != nil {
+	if err != nil {
+		logger.Logger.Error(err)
+		return false
+	}
+	if !b {
 		return false
 	}
 	ctx.SetValue(ZgitUserAccount, userInfo)

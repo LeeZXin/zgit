@@ -148,6 +148,7 @@ func MergePullRequest(ctx context.Context, reqDTO MergePullRequestReqDTO) error 
 		}
 		if b {
 			err = git.Merge(ctx, absPath, pr.Target, pr.Head, info, git.MergeRepoOpts{
+				PrId:    pr.PrId,
 				Message: fmt.Sprintf(i18n.GetByKey(i18n.PullRequestMergeMessage), pr.PrId, pr.CreateBy, reqDTO.Operator.Account),
 			})
 			if err != nil {

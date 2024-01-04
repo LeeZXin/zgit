@@ -59,7 +59,7 @@ func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
 	infoList := make([]hookapi.RevInfo, 0)
 	// the environment is set by serv command
 	pusherId := os.Getenv(git.EnvPusherId)
-	prId := os.Getenv(git.EnvPRID)
+	prId := os.Getenv(git.EnvPrId)
 	repoId := os.Getenv(git.EnvRepoId)
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
@@ -108,7 +108,7 @@ func doHttp(ctx context.Context, client *http.Client, reqVO hookapi.OptsReqVO, u
 	err := httputil.Post(ctx, client,
 		fmt.Sprintf("%s/%s", os.Getenv(git.EnvAppUrl), url),
 		map[string]string{
-			"Authorization": "",
+			"Authorization": os.Getenv(git.EnvHookToken),
 		},
 		reqVO,
 		&resp)

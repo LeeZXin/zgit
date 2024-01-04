@@ -15,11 +15,24 @@ import (
 	"zgit/util"
 )
 
+var (
+	userCache = util.NewGoCache()
+)
+
 const (
 	LoginSessionExpiry = 2 * time.Hour
 )
 
 func GetUserInfoByAccount(ctx context.Context, account string) (usermd.UserInfo, bool, error) {
+	uc, b := userCache.Get(account)
+	if b {
+		u := uc.(usermd.UserInfo)
+		// 来自空缓存
+		if u.Account == "" {
+			return usermd.UserInfo{}, false, nil
+		}
+		return uc.(usermd.UserInfo), true, nil
+	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	user, b, err := usermd.GetByAccount(ctx, account)
@@ -28,9 +41,15 @@ func GetUserInfoByAccount(ctx context.Context, account string) (usermd.UserInfo,
 		return usermd.UserInfo{}, false, util.InternalError()
 	}
 	if !b {
+		// 设置空缓存
+		u := usermd.UserInfo{}
+		userCache.Set(account, u, time.Second)
 		return usermd.UserInfo{}, false, nil
 	}
-	return user.ToUserInfo(), true, nil
+	// 三分钟缓存
+	ret := user.ToUserInfo()
+	userCache.Set(account, ret, 3*time.Minute)
+	return ret, true, nil
 }
 
 func Login(ctx context.Context, reqDTO LoginReqDTO) (string, error) {
@@ -226,4 +245,99 @@ func ListUser(ctx context.Context, reqDTO ListUserReqDTO) (ListUserRespDTO, erro
 		ret.Cursor = userList[len(userList)-1].Id
 	}
 	return ret, nil
+}
+
+func UpdateUser(ctx context.Context, reqDTO UpdateUserReqDTO) error {
+	if err := reqDTO.IsValid(); err != nil {
+		return err
+	}
+	// 系统管理员或本人才能编辑user
+	if !reqDTO.Operator.IsAdmin && reqDTO.Account != reqDTO.Operator.Account {
+		return util.UnauthorizedError()
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	_, b, err := usermd.GetByAccount(ctx, reqDTO.Account)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	// 账号不存在
+	if !b {
+		return util.InvalidArgsError()
+	}
+	if _, err = usermd.UpdateUser(ctx, usermd.UpdateUserReqDTO{
+		Account: reqDTO.Account,
+		Name:    reqDTO.Name,
+		Email:   reqDTO.Email,
+	}); err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	return nil
+}
+
+func UpdateAdmin(ctx context.Context, reqDTO UpdateAdminReqDTO) error {
+	if err := reqDTO.IsValid(); err != nil {
+		return err
+	}
+	// 只有系统管理员才能设置系统管理员
+	if !reqDTO.Operator.IsAdmin {
+		return util.UnauthorizedError()
+	}
+	// 系统管理员不能处理自己
+	if reqDTO.Operator.Account == reqDTO.Account {
+		return util.InvalidArgsError()
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	_, b, err := usermd.GetByAccount(ctx, reqDTO.Account)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	// 账号不存在
+	if !b {
+		return util.InvalidArgsError()
+	}
+	if _, err = usermd.UpdateAdmin(ctx, usermd.UpdateAdminReqDTO{
+		Account: reqDTO.Account,
+		IsAdmin: reqDTO.IsAdmin,
+	}); err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	return nil
+}
+
+func UpdatePassword(ctx context.Context, reqDTO UpdatePasswordReqDTO) error {
+	if err := reqDTO.IsValid(); err != nil {
+		return err
+	}
+	// 如果是系统管理员可以设置任何人密码
+	if !reqDTO.Operator.IsAdmin {
+		// 否则只能设置自己的密码
+		if reqDTO.Account != reqDTO.Operator.Account {
+			return util.UnauthorizedError()
+		}
+	}
+	ctx, closer := mysqlstore.Context(ctx)
+	defer closer.Close()
+	_, b, err := usermd.GetByAccount(ctx, reqDTO.Account)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	// 账号不存在
+	if !b {
+		return util.InvalidArgsError()
+	}
+	if _, err = usermd.UpdatePassword(ctx, usermd.UpdatePasswordReqDTO{
+		Account:  reqDTO.Account,
+		Password: reqDTO.Password,
+	}); err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	return nil
 }

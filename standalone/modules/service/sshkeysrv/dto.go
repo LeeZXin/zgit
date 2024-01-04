@@ -1,6 +1,8 @@
 package sshkeysrv
 
 import (
+	"strings"
+	"zgit/pkg/git/signature"
 	"zgit/standalone/modules/model/usermd"
 	"zgit/util"
 )
@@ -18,7 +20,7 @@ func (r *InsertSshKeyReqDTO) IsValid() error {
 	if r.PubKeyContent == "" {
 		return util.InvalidArgsError()
 	}
-	if r.Operator.Account == "" {
+	if !validateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -30,11 +32,88 @@ type DeleteSshKeyReqDTO struct {
 }
 
 func (r *DeleteSshKeyReqDTO) IsValid() error {
-	if len(r.KeyId) == 0 || len(r.KeyId) > 32 {
+	if !validateKeyId(r.KeyId) {
 		return util.InvalidArgsError()
 	}
-	if r.Operator.Account == "" {
+	if !validateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
+}
+
+type ListSshKeyReqDTO struct {
+	Offset   int64
+	Limit    int
+	Operator usermd.UserInfo
+}
+
+func (r *ListSshKeyReqDTO) IsValid() error {
+	if r.Offset < 0 {
+		return util.InvalidArgsError()
+	}
+	if r.Limit <= 0 || r.Limit > 1000 {
+		return util.InvalidArgsError()
+	}
+	if !validateOperator(r.Operator) {
+		return util.InvalidArgsError()
+	}
+	return nil
+}
+
+type ListSshKeyRespDTO struct {
+	Cursor  int64
+	KeyList []SshKeyDTO
+}
+
+type SshKeyDTO struct {
+	KeyId       string
+	Name        string
+	Fingerprint string
+}
+
+type GetTokenReqDTO struct {
+	KeyId    string
+	Operator usermd.UserInfo
+}
+
+func (r *GetTokenReqDTO) IsValid() error {
+	if !validateKeyId(r.KeyId) {
+		return util.InvalidArgsError()
+	}
+	if !validateOperator(r.Operator) {
+		return util.InvalidArgsError()
+	}
+	return nil
+}
+
+type VerifySshKeyReqDTO struct {
+	KeyId     string
+	Token     string
+	Signature string
+	Operator  usermd.UserInfo
+}
+
+func (r *VerifySshKeyReqDTO) IsValid() error {
+	if !validateKeyId(r.KeyId) {
+		return util.InvalidArgsError()
+	}
+	if len(r.Token) != 72 {
+		return util.InvalidArgsError()
+	}
+	r.Signature = strings.TrimSpace(r.Signature)
+	if !strings.HasPrefix(r.Signature, signature.StartSSHSigLineTag) || !strings.HasSuffix(r.Signature, signature.EndSSHSigLineTag) {
+		return util.InvalidArgsError()
+	}
+	if !validateOperator(r.Operator) {
+		return util.InvalidArgsError()
+	}
+	return nil
+}
+
+func validateKeyId(keyId string) bool {
+	return len(keyId) == 32
+}
+
+func validateOperator(operator usermd.UserInfo) bool {
+	return operator.Account != ""
 }

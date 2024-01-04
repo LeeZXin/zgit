@@ -2,9 +2,7 @@ package signature
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
@@ -84,35 +82,21 @@ func GetGPGEntityListPublicKeys(entityList openpgp.EntityList) []*GPGPublicKey {
 	return ret
 }
 
-func GetVerifyToken(user User, minutes int) string {
-	h := sha256.New()
-	_, _ = h.Write([]byte(strings.Join(
-		[]string{
-			time.Now().Truncate(time.Minute).Add(time.Duration(minutes) * time.Minute).Format(time.RFC1123Z),
-			user.CreatedUnix.Format(time.RFC1123Z),
-			user.Name,
-			user.Email,
-			user.Id,
-		}, ":",
-	)))
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-func CheckArmoredDetachedSignature(ekeys openpgp.EntityList, token, signature string) (*openpgp.Entity, error) {
+func CheckArmoredDetachedSignature(keys openpgp.EntityList, token, signature string) (*openpgp.Entity, error) {
 	signer, err := openpgp.CheckArmoredDetachedSignature(
-		ekeys,
+		keys,
 		strings.NewReader(token),
 		strings.NewReader(signature),
 	)
 	if err != nil {
 		signer, err = openpgp.CheckArmoredDetachedSignature(
-			ekeys,
+			keys,
 			strings.NewReader(token+"\n"),
 			strings.NewReader(signature),
 		)
 		if err != nil {
 			signer, err = openpgp.CheckArmoredDetachedSignature(
-				ekeys,
+				keys,
 				strings.NewReader(token+"\r\n"),
 				strings.NewReader(signature),
 			)

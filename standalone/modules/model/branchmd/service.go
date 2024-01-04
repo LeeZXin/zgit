@@ -2,19 +2,21 @@ package branchmd
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/LeeZXin/zsf-utils/listutil"
 	"github.com/LeeZXin/zsf/xorm/xormutil"
 )
 
-func InsertProtectedBranch(ctx context.Context, repoPath, branch string) (ProtectedBranch, error) {
-	ret := ProtectedBranch{
-		Branch: branch,
-		RepoId: repoPath,
-	}
-	_, err := xormutil.MustGetXormSession(ctx).Insert(&ret)
-	return ret, err
+func InsertProtectedBranch(ctx context.Context, reqDTO InsertProtectedBranchReqDTO) error {
+	_, err := xormutil.MustGetXormSession(ctx).Insert(&ProtectedBranch{
+		Branch: reqDTO.Branch,
+		RepoId: reqDTO.RepoId,
+		Cfg:    reqDTO.Cfg.ToString(),
+	})
+	return err
 }
 
-func DeleteProtectedBranch(ctx context.Context, branch ProtectedBranch) (bool, error) {
+func DeleteProtectedBranch(ctx context.Context, branch ProtectedBranchDTO) (bool, error) {
 	rows, err := xormutil.MustGetXormSession(ctx).
 		Where("repo_id = ?", branch.RepoId).
 		And("branch = ?", branch.Branch).
@@ -23,36 +25,33 @@ func DeleteProtectedBranch(ctx context.Context, branch ProtectedBranch) (bool, e
 	return rows == 1, err
 }
 
-func GetProtectedBranch(ctx context.Context, repoPath, branch string) (ProtectedBranch, bool, error) {
+func GetProtectedBranch(ctx context.Context, repoId, branch string) (ProtectedBranchDTO, bool, error) {
 	ret := ProtectedBranch{}
 	b, err := xormutil.MustGetXormSession(ctx).
-		Where("repo_id = ?", repoPath).
+		Where("repo_id = ?", repoId).
 		And("branch = ?", branch).
 		Limit(1).
 		Get(&ret)
-	return ret, b, err
+	return protectedBranch2DTO(ret), b, err
 }
 
-func ListProtectedBranch(ctx context.Context, reqDTO ListProtectedBranchReqDTO) ([]ProtectedBranch, error) {
-	session := xormutil.MustGetXormSession(ctx).Where("repo_id = ?", reqDTO.RepoId)
-	if reqDTO.SearchName != "" {
-		session.And("branch like ?", reqDTO.SearchName+"%")
-	}
-	if reqDTO.Offset > 0 {
-		session.And("id > ?", reqDTO.Offset)
-	}
-	if reqDTO.Limit > 0 {
-		session.Limit(reqDTO.Limit)
-	}
+func ListProtectedBranch(ctx context.Context, repoId string) ([]ProtectedBranchDTO, error) {
+	session := xormutil.MustGetXormSession(ctx).Where("repo_id = ?", repoId)
 	ret := make([]ProtectedBranch, 0)
-	err := session.Find(&ret)
-	return ret, err
+	if err := session.Find(&ret); err != nil {
+		return nil, err
+	}
+	return listutil.Map(ret, func(t ProtectedBranch) (ProtectedBranchDTO, error) {
+		return protectedBranch2DTO(t), nil
+	})
 }
 
-func CountProtectedBranch(ctx context.Context, reqDTO ListProtectedBranchReqDTO) (int64, error) {
-	session := xormutil.MustGetXormSession(ctx).Where("repo_id = ?", reqDTO.RepoId)
-	if reqDTO.SearchName != "" {
-		session.And("branch like ?", reqDTO.SearchName+"%")
+func protectedBranch2DTO(b ProtectedBranch) ProtectedBranchDTO {
+	var cfg ProtectedBranchCfg
+	json.Unmarshal([]byte(b.Cfg), &cfg)
+	return ProtectedBranchDTO{
+		RepoId: b.RepoId,
+		Branch: b.Branch,
+		Cfg:    cfg,
 	}
-	return session.Count(new(ProtectedBranch))
 }
