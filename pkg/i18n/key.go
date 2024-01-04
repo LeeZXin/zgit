@@ -24,6 +24,8 @@ const (
 	UserAlreadyExists   Key = "user.alreadyExists"
 
 	UserAccountNotFoundWarnFormat Key = "user.notFoundWarnFormat"
+
+	UserAccountUnauthorizedReviewCodeWarnFormat Key = "user.unauthorizedReviewCodeWarnFormat"
 )
 
 const (
@@ -183,6 +185,8 @@ var (
 		SshKeyVerifyFailed:       "校验失败",
 
 		ProtectedBranchInvalidReviewCountWhenCreatePr: "保护分支代码评审者数量不合法",
+
+		UserAccountUnauthorizedReviewCodeWarnFormat: "该用户%s无评审代码的权限",
 	}
 )
 

@@ -22,7 +22,7 @@ func InsertProtectedBranch(ctx context.Context, reqDTO InsertProtectedBranchReqD
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	repo, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
 	if err != nil {
 		return err
 	}
@@ -40,8 +40,18 @@ func InsertProtectedBranch(ctx context.Context, reqDTO InsertProtectedBranchReqD
 			logger.Logger.WithContext(ctx).Error(err)
 			return util.InternalError()
 		}
+		// 评审账号不合法
 		if !b {
 			return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), fmt.Sprintf(i18n.GetByKey(i18n.UserAccountNotFoundWarnFormat), account))
+		}
+		// 检查评审者是否有访问代码的权限
+		detail, b, err := projectmd.GetProjectUserPermDetail(ctx, repo.ProjectId, account)
+		if err != nil {
+			logger.Logger.WithContext(ctx).Error(err)
+			return util.InternalError()
+		}
+		if !b || !detail.PermDetail.GetRepoPerm(repo.RepoId).CanAccess {
+			return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), fmt.Sprintf(i18n.GetByKey(i18n.UserAccountUnauthorizedReviewCodeWarnFormat), account))
 		}
 	}
 	if err = branchmd.InsertProtectedBranch(ctx, branchmd.InsertProtectedBranchReqDTO{
@@ -61,7 +71,7 @@ func DeleteProtectedBranch(ctx context.Context, reqDTO DeleteProtectedBranchReqD
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	_, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
 	if err != nil {
 		return err
 	}
@@ -87,7 +97,7 @@ func ListProtectedBranch(ctx context.Context, reqDTO ListProtectedBranchReqDTO) 
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
+	_, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
 	if err != nil {
 		return nil, err
 	}
@@ -107,31 +117,31 @@ func ListProtectedBranch(ctx context.Context, reqDTO ListProtectedBranchReqDTO) 
 }
 
 // checkPerm 检查权限 只需检查是否是项目管理员
-func checkPerm(ctx context.Context, repoId string, operator usermd.UserInfo) error {
+func checkPerm(ctx context.Context, repoId string, operator usermd.UserInfo) (repomd.Repo, error) {
 	// 检查仓库是否存在
 	repo, b, err := repomd.GetByRepoId(ctx, repoId)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return util.InternalError()
+		return repomd.Repo{}, util.InternalError()
 	}
 	if !b {
-		return util.InvalidArgsError()
+		return repomd.Repo{}, util.InvalidArgsError()
 	}
 	// 如果是系统管理员有所有权限
 	if operator.IsAdmin {
-		return nil
+		return repo, nil
 	}
 	// 如果不是 检查用户组权限
 	permDetail, b, err := projectmd.GetProjectUserPermDetail(ctx, repo.ProjectId, operator.Account)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return util.InternalError()
+		return repo, util.InternalError()
 	}
 	if !b {
-		return util.UnauthorizedError()
+		return repo, util.UnauthorizedError()
 	}
 	if !permDetail.PermDetail.GetRepoPerm(repoId).CanHandleProtectedBranch {
-		return util.UnauthorizedError()
+		return repo, util.UnauthorizedError()
 	}
-	return nil
+	return repo, nil
 }
