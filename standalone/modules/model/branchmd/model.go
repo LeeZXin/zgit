@@ -11,6 +11,7 @@ const (
 
 type ProtectedBranch struct {
 	Id      int64     `json:"id" xorm:"pk autoincr"`
+	Bid     string    `json:"bid"`
 	Branch  string    `json:"branch"`
 	RepoId  string    `json:"repoId"`
 	Cfg     string    `json:"cfg"`

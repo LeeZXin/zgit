@@ -96,6 +96,12 @@ const (
 	PullRequestMergedStatus  Key = "pullRequest.mergedStatus"
 	PullRequestUnknownStatus Key = "pullRequest.unknownStatus"
 	PullRequestMergeMessage  Key = "pullRequest.mergeMessage"
+
+	PullRequestAgreeMergeStatus    Key = "pullRequest.agreeMerge"
+	PullRequestDisagreeMergeStatus Key = "pullRequest.disagreeMerge"
+	PullRequestUnknownReviewStatus Key = "pullRequest.unknownReviewStatus"
+
+	PullRequestReviewerCountLowerThanCfg Key = "pullRequest.reviewerCountLowerThanCfg"
 )
 
 const (
@@ -106,6 +112,8 @@ const (
 
 const (
 	ProtectedBranchInvalidReviewCountWhenCreatePr Key = "protectedBranch.invalidReviewCountWhenCreatePr"
+	ProtectedBranchNotAllowForcePush              Key = "protectedBranch.notAllowForcePush"
+	ProtectedBranchNotAllowDelete                 Key = "protectedBranch.notAllowDelete"
 )
 
 var (
@@ -187,6 +195,15 @@ var (
 		ProtectedBranchInvalidReviewCountWhenCreatePr: "保护分支代码评审者数量不合法",
 
 		UserAccountUnauthorizedReviewCodeWarnFormat: "该用户%s无评审代码的权限",
+
+		ProtectedBranchNotAllowForcePush: "保护分支禁止强制push",
+		ProtectedBranchNotAllowDelete:    "保护分支禁止删除",
+
+		PullRequestAgreeMergeStatus:    "同意合并",
+		PullRequestDisagreeMergeStatus: "不同意合并",
+		PullRequestUnknownReviewStatus: "未知状态",
+
+		PullRequestReviewerCountLowerThanCfg: "代码评审数量小于配置数量",
 	}
 )
 

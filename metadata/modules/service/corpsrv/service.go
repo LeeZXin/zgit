@@ -2,13 +2,11 @@ package corpsrv
 
 import (
 	"context"
-	"github.com/LeeZXin/zsf-utils/bizerr"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/patrickmn/go-cache"
 	"time"
 	"zgit/httpclient/metadataclient"
-	"zgit/pkg/apicode"
-	i18n2 "zgit/pkg/i18n"
+	"zgit/util"
 )
 
 var (
@@ -30,7 +28,7 @@ func GetCorpInfoByCorpId(ctx context.Context, id string) (CorpInfoDTO, bool, err
 	})
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return CorpInfoDTO{}, false, bizerr.NewBizErr(apicode.InternalErrorCode.Int(), i18n2.GetByKey(i18n2.SystemInternalError))
+		return CorpInfoDTO{}, false, util.InternalError()
 	}
 	if respVO.IsExists {
 		ret := CorpInfoDTO{

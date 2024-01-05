@@ -45,8 +45,7 @@ func deleteProtectedBranch(c *gin.Context) {
 	var req DeleteProtectedBranchReqVO
 	if util.ShouldBindJSON(&req, c) {
 		err := branchsrv.DeleteProtectedBranch(c.Request.Context(), branchsrv.DeleteProtectedBranchReqDTO{
-			RepoId:   req.RepoId,
-			Branch:   req.Branch,
+			Bid:      req.Bid,
 			Operator: apicommon.MustGetLoginUser(c),
 		})
 		if err != nil {
@@ -73,6 +72,7 @@ func listProtectedBranch(c *gin.Context) {
 		}
 		respVO.Branches, _ = listutil.Map(branchList, func(t branchsrv.ProtectedBranchDTO) (ProtectedBranchVO, error) {
 			return ProtectedBranchVO{
+				Bid:    t.Bid,
 				Branch: t.Branch,
 				Cfg:    t.Cfg,
 			}, nil

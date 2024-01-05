@@ -22,6 +22,7 @@ const (
 	SshKeyVerifyTokenExpiredCode
 	SshKeyVerifyFailedCode
 	InvalidReviewCountWhenCreatePrCode
+	ForcePushForbiddenCode
 )
 
 func (c Code) Int() int {

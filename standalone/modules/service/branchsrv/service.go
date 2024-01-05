@@ -2,8 +2,6 @@ package branchsrv
 
 import (
 	"context"
-	"fmt"
-	"github.com/LeeZXin/zsf-utils/bizerr"
 	"github.com/LeeZXin/zsf-utils/listutil"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/xorm/mysqlstore"
@@ -42,7 +40,7 @@ func InsertProtectedBranch(ctx context.Context, reqDTO InsertProtectedBranchReqD
 		}
 		// 评审账号不合法
 		if !b {
-			return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), fmt.Sprintf(i18n.GetByKey(i18n.UserAccountNotFoundWarnFormat), account))
+			return util.NewBizErr(apicode.InvalidArgsCode, i18n.UserAccountNotFoundWarnFormat, account)
 		}
 		// 检查评审者是否有访问代码的权限
 		detail, b, err := projectmd.GetProjectUserPermDetail(ctx, repo.ProjectId, account)
@@ -51,7 +49,7 @@ func InsertProtectedBranch(ctx context.Context, reqDTO InsertProtectedBranchReqD
 			return util.InternalError()
 		}
 		if !b || !detail.PermDetail.GetRepoPerm(repo.RepoId).CanAccess {
-			return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), fmt.Sprintf(i18n.GetByKey(i18n.UserAccountUnauthorizedReviewCodeWarnFormat), account))
+			return util.NewBizErr(apicode.InvalidArgsCode, i18n.UserAccountUnauthorizedReviewCodeWarnFormat, account)
 		}
 	}
 	if err = branchmd.InsertProtectedBranch(ctx, branchmd.InsertProtectedBranchReqDTO{
@@ -71,11 +69,7 @@ func DeleteProtectedBranch(ctx context.Context, reqDTO DeleteProtectedBranchReqD
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	_, err := checkPerm(ctx, reqDTO.RepoId, reqDTO.Operator)
-	if err != nil {
-		return err
-	}
-	branch, b, err := branchmd.GetProtectedBranch(ctx, reqDTO.RepoId, reqDTO.Branch)
+	pb, b, err := branchmd.GetProtectedBranchByBid(ctx, reqDTO.Bid)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
 		return util.InternalError()
@@ -83,7 +77,11 @@ func DeleteProtectedBranch(ctx context.Context, reqDTO DeleteProtectedBranchReqD
 	if !b {
 		return util.InvalidArgsError()
 	}
-	_, err = branchmd.DeleteProtectedBranch(ctx, branch)
+	_, err = checkPerm(ctx, pb.RepoId, reqDTO.Operator)
+	if err != nil {
+		return err
+	}
+	_, err = branchmd.DeleteProtectedBranch(ctx, pb)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
 		return util.InternalError()
@@ -108,6 +106,7 @@ func ListProtectedBranch(ctx context.Context, reqDTO ListProtectedBranchReqDTO) 
 	}
 	ret, _ := listutil.Map(branchList, func(t branchmd.ProtectedBranchDTO) (ProtectedBranchDTO, error) {
 		return ProtectedBranchDTO{
+			Bid:    t.Bid,
 			RepoId: t.RepoId,
 			Branch: t.Branch,
 			Cfg:    t.Cfg,

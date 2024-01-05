@@ -7,6 +7,7 @@ type InsertProtectedBranchReqDTO struct {
 }
 
 type ProtectedBranchDTO struct {
+	Bid    string
 	RepoId string
 	Branch string
 	Cfg    ProtectedBranchCfg

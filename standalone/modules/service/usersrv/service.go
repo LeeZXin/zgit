@@ -2,7 +2,6 @@ package usersrv
 
 import (
 	"context"
-	"github.com/LeeZXin/zsf-utils/bizerr"
 	"github.com/LeeZXin/zsf-utils/listutil"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/xorm/mysqlstore"
@@ -61,14 +60,14 @@ func Login(ctx context.Context, reqDTO LoginReqDTO) (string, error) {
 	user, b, err := usermd.GetByAccount(ctx, reqDTO.Account)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return "", bizerr.NewBizErr(apicode.InternalErrorCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+		return "", util.InternalError()
 	}
 	if !b {
-		return "", bizerr.NewBizErr(apicode.DataNotExistsCode.Int(), i18n.GetByKey(i18n.UserNotFound))
+		return "", util.NewBizErr(apicode.DataNotExistsCode, i18n.UserNotFound)
 	}
 	// 校验密码
 	if user.Password != util.EncryptUserPassword(reqDTO.Password) {
-		return "", bizerr.NewBizErr(apicode.WrongLoginPasswordCode.Int(), i18n.GetByKey(i18n.UserWrongPassword))
+		return "", util.NewBizErr(apicode.WrongLoginPasswordCode, i18n.UserWrongPassword)
 	}
 	sessionStore := apisession.GetStore()
 	// 删除原有的session
@@ -82,7 +81,7 @@ func Login(ctx context.Context, reqDTO LoginReqDTO) (string, error) {
 	})
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return "", bizerr.NewBizErr(apicode.InternalErrorCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+		return "", util.InternalError()
 	}
 	return sessionId, nil
 }
@@ -96,18 +95,18 @@ func LoginOut(ctx context.Context, reqDTO LoginOutReqDTO) error {
 	session, b, err := sessionStore.GetBySessionId(reqDTO.SessionId)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return bizerr.NewBizErr(apicode.InternalErrorCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+		return util.InternalError()
 	}
 	if !b {
-		return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.SystemInvalidArgs))
+		return util.InvalidArgsError()
 	}
 	if session.UserInfo.Account != reqDTO.Operator.Account {
-		return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.SystemInvalidArgs))
+		return util.InvalidArgsError()
 	}
 	err = sessionStore.DeleteBySessionId(reqDTO.SessionId)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return bizerr.NewBizErr(apicode.InternalErrorCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+		return util.InternalError()
 	}
 	return nil
 }
@@ -124,7 +123,7 @@ func InsertUser(ctx context.Context, reqDTO InsertUserReqDTO) error {
 	defer closer.Close()
 	_, b, err := usermd.GetByAccount(ctx, reqDTO.Account)
 	if b {
-		return bizerr.NewBizErr(apicode.UserAlreadyExistsCode.Int(), i18n.GetByKey(i18n.UserAlreadyExists))
+		return util.NewBizErr(apicode.UserAlreadyExistsCode, i18n.UserAlreadyExists)
 	}
 	_, err = usermd.InsertUser(ctx, usermd.InsertUserReqDTO{
 		Name:      reqDTO.Name,
@@ -157,12 +156,12 @@ func RegisterUser(ctx context.Context, reqDTO RegisterUserReqDTO) error {
 	defer closer.Close()
 	_, b, err := usermd.GetByAccount(ctx, reqDTO.Account)
 	if b {
-		return bizerr.NewBizErr(apicode.UserAlreadyExistsCode.Int(), i18n.GetByKey(i18n.UserAlreadyExists))
+		return util.NewBizErr(apicode.UserAlreadyExistsCode, i18n.UserAlreadyExists)
 	}
 	userCount, err := usermd.CountUser(ctx)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Errorf("RegisterUser err: %v", err)
-		return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+		return util.NewBizErr(apicode.InvalidArgsCode, i18n.SystemInternalError)
 	}
 	// 如果用户表为空 就是管理员
 	_, err = usermd.InsertUser(ctx, usermd.InsertUserReqDTO{
@@ -174,7 +173,7 @@ func RegisterUser(ctx context.Context, reqDTO RegisterUserReqDTO) error {
 	})
 	if err != nil {
 		logger.Logger.WithContext(ctx).Errorf("RegisterUser err: %v", err)
-		return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+		return util.InternalError()
 	}
 	return nil
 }
@@ -195,7 +194,7 @@ func DeleteUser(ctx context.Context, reqDTO DeleteUserReqDTO) error {
 		return util.InternalError()
 	}
 	if !b {
-		return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.UserNotFound))
+		return util.InvalidArgsError()
 	}
 	// 数据库删除用户
 	_, err = usermd.DeleteUser(ctx, user)

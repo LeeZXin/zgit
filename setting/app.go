@@ -2,6 +2,7 @@ package setting
 
 import (
 	"errors"
+	"github.com/LeeZXin/zsf-utils/idutil"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/property/static"
 	"github.com/LeeZXin/zsf/zsf"
@@ -27,7 +28,7 @@ var (
 
 	standaloneCorpId = static.GetString("app.corpId")
 
-	hookToken = static.GetString("hook.token")
+	hookToken = idutil.RandomUuid()
 )
 
 func init() {

@@ -56,11 +56,14 @@ func runPreReceive(c *cli.Context) error {
 
 // scanStdinAndDoHttp 处理输入并发送http
 func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
-	infoList := make([]hookapi.RevInfo, 0)
+	infoList := make([]hook.RevInfo, 0)
 	// the environment is set by serv command
 	pusherId := os.Getenv(git.EnvPusherId)
 	prId := os.Getenv(git.EnvPrId)
 	repoId := os.Getenv(git.EnvRepoId)
+	aod := os.Getenv(git.EnvAlternativeObjectDirectories)
+	qp := os.Getenv(git.EnvQuarantinePath)
+	od := os.Getenv(git.EnvObjectDirectory)
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := strings.TrimSpace(string(scanner.Bytes()))
@@ -70,7 +73,7 @@ func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
 		}
 		refName := git.RefName(fields[2])
 		if refName.IsBranch() || refName.IsTag() {
-			infoList = append(infoList, hookapi.RevInfo{
+			infoList = append(infoList, hook.RevInfo{
 				OldCommitId: fields[0],
 				NewCommitId: fields[1],
 				RefName:     fields[2],
@@ -81,14 +84,17 @@ func scanStdinAndDoHttp(ctx context.Context, httpUrl string) error {
 	defer client.CloseIdleConnections()
 	partitionList := listutil.Partition(infoList, 30)
 	for _, partition := range partitionList {
-		reqVO := hookapi.OptsReqVO{
-			RevInfoList: partition,
-			PusherId:    pusherId,
-			PrId:        prId,
-			RepoId:      repoId,
+		reqVO := hook.Opts{
+			RevInfoList:                  partition,
+			RepoId:                       repoId,
+			PrId:                         prId,
+			PusherId:                     pusherId,
+			ObjectDirectory:              od,
+			AlternativeObjectDirectories: aod,
+			QuarantinePath:               qp,
 		}
 		if err := doHttp(ctx, client, reqVO, httpUrl); err != nil {
-			return fmt.Errorf("do internal api failed: %v", err)
+			return err
 		}
 	}
 	return nil
@@ -103,7 +109,7 @@ func runHookPostReceive(c *cli.Context) error {
 	return scanStdinAndDoHttp(ctx, hook.ApiPostReceiveUrl)
 }
 
-func doHttp(ctx context.Context, client *http.Client, reqVO hookapi.OptsReqVO, url string) error {
+func doHttp(ctx context.Context, client *http.Client, reqVO hook.Opts, url string) error {
 	resp := hookapi.HttpRespVO{}
 	err := httputil.Post(ctx, client,
 		fmt.Sprintf("%s/%s", os.Getenv(git.EnvAppUrl), url),

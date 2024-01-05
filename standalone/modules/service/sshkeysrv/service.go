@@ -2,7 +2,6 @@ package sshkeysrv
 
 import (
 	"context"
-	"github.com/LeeZXin/zsf-utils/bizerr"
 	"github.com/LeeZXin/zsf-utils/listutil"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/xorm/mysqlstore"
@@ -36,7 +35,7 @@ func SearchByKeyContent(ctx context.Context, key gossh.PublicKey) (sshkeymd.KeyI
 	pubKey, b, err := sshkeymd.SearchByKeyContent(ctx, keyContent)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return sshkeymd.KeyInfo{}, false, bizerr.NewBizErr(apicode.InternalErrorCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+		return sshkeymd.KeyInfo{}, false, util.InternalError()
 	}
 	if !b {
 		// 空缓存
@@ -83,7 +82,7 @@ func InsertSshKey(ctx context.Context, reqDTO InsertSshKeyReqDTO) error {
 	}
 	publicKey, _, _, _, err := gossh.ParseAuthorizedKey([]byte(reqDTO.PubKeyContent))
 	if err != nil {
-		return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.SshKeyFormatError))
+		return util.NewBizErr(apicode.InvalidArgsCode, i18n.SshKeyFormatError)
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
@@ -93,7 +92,7 @@ func InsertSshKey(ctx context.Context, reqDTO InsertSshKeyReqDTO) error {
 		return util.InternalError()
 	}
 	if b {
-		return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.SshKeyAlreadyExists))
+		return util.NewBizErr(apicode.InvalidArgsCode, i18n.SshKeyAlreadyExists)
 	}
 	fingerprint := gossh.FingerprintSHA256(publicKey)
 	_, err = sshkeymd.InsertSshKey(ctx, sshkeymd.InsertSshKeyReqDTO{
@@ -185,7 +184,7 @@ func VerifySshKey(ctx context.Context, reqDTO VerifySshKeyReqDTO) error {
 	}
 	// 已经校验过了
 	if sshKey.Verified {
-		return bizerr.NewBizErr(apicode.SshKeyAlreadyVerifiedCode.Int(), i18n.GetByKey(i18n.SshKeyAlreadyVerified))
+		return util.NewBizErr(apicode.SshKeyAlreadyVerifiedCode, i18n.SshKeyAlreadyVerified)
 	}
 	//首先校验token正确
 	if !signature.VerifyToken(reqDTO.Token, signature.User{
@@ -197,12 +196,12 @@ func VerifySshKey(ctx context.Context, reqDTO VerifySshKeyReqDTO) error {
 	_, b = tokenCache.Get(reqDTO.KeyId)
 	// token不存在或已失效
 	if !b {
-		return bizerr.NewBizErr(apicode.SshKeyVerifyTokenExpiredCode.Int(), i18n.GetByKey(i18n.SshKeyVerifyTokenExpired))
+		return util.NewBizErr(apicode.SshKeyVerifyTokenExpiredCode, i18n.SshKeyVerifyTokenExpired)
 	}
 	// 校验签名
 	if err = signature.VerifySshSignature(reqDTO.Signature, reqDTO.Token, sshKey.Content); err != nil {
 		// 校验失败
-		return bizerr.NewBizErr(apicode.SshKeyVerifyFailedCode.Int(), i18n.GetByKey(i18n.SshKeyVerifyFailed))
+		return util.NewBizErr(apicode.SshKeyVerifyFailedCode, i18n.SshKeyVerifyFailed)
 	}
 	if _, err = sshkeymd.UpdateVerifiedVar(ctx, sshkeymd.UpdateVerifiedVarReqDTO{
 		KeyId:    reqDTO.KeyId,

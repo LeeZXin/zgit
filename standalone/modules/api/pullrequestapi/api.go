@@ -20,6 +20,8 @@ func InitApi() {
 			group.POST("/close", closePullRequest)
 			// merge合并请求
 			group.POST("/merge", mergePullRequest)
+			// review
+			group.POST("/review", reviewPullRequest)
 		}
 	})
 }
@@ -62,6 +64,23 @@ func mergePullRequest(c *gin.Context) {
 		err := pullrequestsrv.MergePullRequest(c.Request.Context(), pullrequestsrv.MergePullRequestReqDTO{
 			PrId:     req.PrId,
 			Operator: apicommon.MustGetLoginUser(c),
+		})
+		if err != nil {
+			util.HandleApiErr(err, c)
+			return
+		}
+		c.JSON(http.StatusOK, ginutil.DefaultSuccessResp)
+	}
+}
+
+func reviewPullRequest(c *gin.Context) {
+	var req ReviewPullRequestReqVO
+	if util.ShouldBindJSON(&req, c) {
+		err := pullrequestsrv.ReviewPullRequest(c.Request.Context(), pullrequestsrv.ReviewPullRequestReqDTO{
+			PrId:      req.PrId,
+			Status:    req.Status,
+			ReviewMsg: req.ReviewMsg,
+			Operator:  apicommon.MustGetLoginUser(c),
 		})
 		if err != nil {
 			util.HandleApiErr(err, c)

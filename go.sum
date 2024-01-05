@@ -44,9 +44,11 @@ github.com/42wim/sshsig v0.0.0-20211121163825-841cf5bbc121/go.mod h1:Ock8XgA7pvU
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
+github.com/IGLOU-EU/go-wildcard/v2 v2.0.2 h1:eQ0nOlEyGfM0NiemevUK55JoNu3IW9R8eRFZMc/apyU=
+github.com/IGLOU-EU/go-wildcard/v2 v2.0.2/go.mod h1:/sUMQ5dk2owR0ZcjRI/4AZ+bUFF5DxGCQrDMNBXUf5o=
 github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
-github.com/LeeZXin/zsf v1.0.95 h1:lvVlgsyQRoeA6druMG+NPt35AGey3qCNYLO/MLsFjbI=
-github.com/LeeZXin/zsf v1.0.95/go.mod h1:BX8CJtCSVCjYZ9qwLzW2mfZmIPFqwDNTLoOYkrtNGMI=
+github.com/LeeZXin/zsf v1.0.96 h1:kmaTwY3qQhsh9YLPF4SK8kQaNNKTNYVHlpfNIMPiHx0=
+github.com/LeeZXin/zsf v1.0.96/go.mod h1:BX8CJtCSVCjYZ9qwLzW2mfZmIPFqwDNTLoOYkrtNGMI=
 github.com/LeeZXin/zsf-utils v1.0.30 h1:xmXfOh6s4VPcHtDSAkiuT1GD2Futph/1AFeqyFFnM60=
 github.com/LeeZXin/zsf-utils v1.0.30/go.mod h1:Qx3UQ9RHnvWQNzxk7la92zK1OCVmpNFCxDwwStdDIvc=
 github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=

@@ -1,5 +1,7 @@
 package pullrequestapi
 
+import "zgit/standalone/modules/model/pullrequestmd"
+
 type SubmitPullRequestReqVO struct {
 	RepoId string `json:"repoId"`
 	Target string `json:"target"`
@@ -12,4 +14,10 @@ type ClosePullRequestReqVO struct {
 
 type MergePullRequestReqVO struct {
 	PrId string `json:"prId"`
+}
+
+type ReviewPullRequestReqVO struct {
+	PrId      string                     `json:"prId"`
+	Status    pullrequestmd.ReviewStatus `json:"status"`
+	ReviewMsg string                     `json:"reviewMsg"`
 }

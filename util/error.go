@@ -1,23 +1,31 @@
 package util
 
 import (
+	"fmt"
 	"github.com/LeeZXin/zsf-utils/bizerr"
 	"zgit/pkg/apicode"
 	"zgit/pkg/i18n"
 )
 
 func InvalidArgsError() error {
-	return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.SystemInvalidArgs))
+	return NewBizErr(apicode.InvalidArgsCode, i18n.SystemInvalidArgs)
 }
 
 func InternalError() error {
-	return bizerr.NewBizErr(apicode.InternalErrorCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+	return NewBizErr(apicode.InternalErrorCode, i18n.SystemInternalError)
 }
 
 func UnauthorizedError() error {
-	return bizerr.NewBizErr(apicode.UnauthorizedCode.Int(), i18n.GetByKey(i18n.SystemUnauthorized))
+	return NewBizErr(apicode.UnauthorizedCode, i18n.SystemUnauthorized)
 }
 
 func AlreadyExistsError() error {
-	return bizerr.NewBizErr(apicode.DataAlreadyExistsCode.Int(), i18n.GetByKey(i18n.SystemAlreadyExists))
+	return NewBizErr(apicode.DataAlreadyExistsCode, i18n.SystemAlreadyExists)
+}
+
+func NewBizErr(code apicode.Code, key i18n.Key, msg ...string) error {
+	if len(msg) == 0 {
+		return bizerr.NewBizErr(code.Int(), i18n.GetByKey(key))
+	}
+	return bizerr.NewBizErr(code.Int(), fmt.Sprintf(i18n.GetByKey(key), msg))
 }

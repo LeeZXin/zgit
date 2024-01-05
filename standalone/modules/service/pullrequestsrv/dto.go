@@ -1,6 +1,7 @@
 package pullrequestsrv
 
 import (
+	"zgit/standalone/modules/model/pullrequestmd"
 	"zgit/standalone/modules/model/usermd"
 	"zgit/util"
 )
@@ -13,7 +14,7 @@ type SubmitPullRequestReqDTO struct {
 }
 
 func (r *SubmitPullRequestReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !validateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
@@ -34,10 +35,10 @@ type ClosePullRequestReqDTO struct {
 }
 
 func (r *ClosePullRequestReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !validateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.PrId) > 32 || len(r.PrId) == 0 {
+	if !validatePrId(r.PrId) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -49,11 +50,42 @@ type MergePullRequestReqDTO struct {
 }
 
 func (r *MergePullRequestReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !validateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.PrId) > 32 || len(r.PrId) == 0 {
+	if !validatePrId(r.PrId) {
 		return util.InvalidArgsError()
 	}
 	return nil
+}
+
+type ReviewPullRequestReqDTO struct {
+	PrId      string
+	Status    pullrequestmd.ReviewStatus
+	ReviewMsg string
+	Operator  usermd.UserInfo
+}
+
+func (r *ReviewPullRequestReqDTO) IsValid() error {
+	if len(r.ReviewMsg) > 255 {
+		return util.InvalidArgsError()
+	}
+	if !r.Status.IsValid() {
+		return util.InvalidArgsError()
+	}
+	if !validateOperator(r.Operator) {
+		return util.InvalidArgsError()
+	}
+	if !validatePrId(r.PrId) {
+		return util.InvalidArgsError()
+	}
+	return nil
+}
+
+func validateOperator(operator usermd.UserInfo) bool {
+	return operator.Account != ""
+}
+
+func validatePrId(prId string) bool {
+	return len(prId) == 32
 }

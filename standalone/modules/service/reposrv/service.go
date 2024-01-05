@@ -31,7 +31,7 @@ func GetInfoByPath(ctx context.Context, path string) (repomd.RepoInfo, bool, err
 	repo, b, err := repomd.GetByPath(ctx, path)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return repomd.RepoInfo{}, false, bizerr.NewBizErr(apicode.InternalErrorCode.Int(), i18n.GetByKey(i18n.SystemInternalError))
+		return repomd.RepoInfo{}, false, util.InternalError()
 	}
 	return repo.ToRepoInfo(), b, nil
 }
@@ -240,7 +240,7 @@ func InitRepo(ctx context.Context, reqDTO InitRepoReqDTO) error {
 	}
 	// 仓库已存在 不能添加
 	if b {
-		return bizerr.NewBizErr(apicode.InvalidArgsCode.Int(), i18n.GetByKey(i18n.RepoAlreadyExists))
+		return util.NewBizErr(apicode.InvalidArgsCode, i18n.RepoAlreadyExists)
 	}
 	// 默认分支
 	if reqDTO.DefaultBranch == "" {
@@ -291,7 +291,7 @@ func InitRepo(ctx context.Context, reqDTO InitRepoReqDTO) error {
 		// 如果有异常 删掉这个仓库
 		util.RemoveAll(absPath)
 		logger.Logger.WithContext(ctx).Error(err)
-		return bizerr.NewBizErr(apicode.InternalErrorCode.Int(), i18n.GetByKey(i18n.RepoInitFail))
+		return util.InternalError()
 	}
 	return nil
 }

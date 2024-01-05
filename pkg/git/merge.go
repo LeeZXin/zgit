@@ -38,6 +38,11 @@ type DiffCommitsInfo struct {
 	ConflictFiles []string         `json:"conflictFiles"`
 }
 
+// IsMergeAble 是否可合并
+func (i *DiffCommitsInfo) IsMergeAble() bool {
+	return len(i.Commits) > 0 && len(i.ConflictFiles) == 0
+}
+
 type MergeRepoOpts struct {
 	PrId    string
 	Message string

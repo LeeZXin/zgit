@@ -12,8 +12,7 @@ type InsertProtectedBranchReqVO struct {
 }
 
 type DeleteProtectedBranchReqVO struct {
-	RepoId string `json:"repoId"`
-	Branch string `json:"branch"`
+	Bid string `json:"bid"`
 }
 
 type ListProtectedBranchReqVO struct {
@@ -21,6 +20,7 @@ type ListProtectedBranchReqVO struct {
 }
 
 type ProtectedBranchVO struct {
+	Bid    string `json:"bid"`
 	Branch string `json:"branch"`
 	Cfg    branchmd.ProtectedBranchCfg
 }

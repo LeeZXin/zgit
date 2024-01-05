@@ -3,12 +3,19 @@ package branchmd
 import (
 	"context"
 	"encoding/json"
+	"github.com/IGLOU-EU/go-wildcard/v2"
+	"github.com/LeeZXin/zsf-utils/idutil"
 	"github.com/LeeZXin/zsf-utils/listutil"
 	"github.com/LeeZXin/zsf/xorm/xormutil"
 )
 
+func GenBid() string {
+	return idutil.RandomUuid()
+}
+
 func InsertProtectedBranch(ctx context.Context, reqDTO InsertProtectedBranchReqDTO) error {
 	_, err := xormutil.MustGetXormSession(ctx).Insert(&ProtectedBranch{
+		Bid:    GenBid(),
 		Branch: reqDTO.Branch,
 		RepoId: reqDTO.RepoId,
 		Cfg:    reqDTO.Cfg.ToString(),
@@ -35,6 +42,15 @@ func GetProtectedBranch(ctx context.Context, repoId, branch string) (ProtectedBr
 	return protectedBranch2DTO(ret), b, err
 }
 
+func GetProtectedBranchByBid(ctx context.Context, bid string) (ProtectedBranchDTO, bool, error) {
+	ret := ProtectedBranch{}
+	b, err := xormutil.MustGetXormSession(ctx).
+		Where("bid = ?", bid).
+		Limit(1).
+		Get(&ret)
+	return protectedBranch2DTO(ret), b, err
+}
+
 func ListProtectedBranch(ctx context.Context, repoId string) ([]ProtectedBranchDTO, error) {
 	session := xormutil.MustGetXormSession(ctx).Where("repo_id = ?", repoId)
 	ret := make([]ProtectedBranch, 0)
@@ -46,10 +62,24 @@ func ListProtectedBranch(ctx context.Context, repoId string) ([]ProtectedBranchD
 	})
 }
 
+func IsProtectedBranch(ctx context.Context, repoId, branch string) (ProtectedBranchCfg, bool, error) {
+	pbList, err := ListProtectedBranch(ctx, repoId)
+	if err != nil {
+		return ProtectedBranchCfg{}, false, err
+	}
+	for _, pb := range pbList {
+		if wildcard.Match(pb.Branch, branch) {
+			return pb.Cfg, true, nil
+		}
+	}
+	return ProtectedBranchCfg{}, false, nil
+}
+
 func protectedBranch2DTO(b ProtectedBranch) ProtectedBranchDTO {
 	var cfg ProtectedBranchCfg
 	json.Unmarshal([]byte(b.Cfg), &cfg)
 	return ProtectedBranchDTO{
+		Bid:    b.Bid,
 		RepoId: b.RepoId,
 		Branch: b.Branch,
 		Cfg:    cfg,

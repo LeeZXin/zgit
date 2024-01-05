@@ -71,6 +71,13 @@ const (
 	PrettyLogFormat = "--pretty=format:%H"
 )
 
+const (
+	EnvAlternativeObjectDirectories = "GIT_ALTERNATE_OBJECT_DIRECTORIES"
+	EnvObjectDirectory              = "GIT_OBJECT_DIRECTORY"
+	EnvQuarantinePath               = "GIT_QUARANTINE_PATH"
+	EnvPushOptionCount              = "GIT_PUSH_OPTION_COUNT"
+)
+
 const notRegularFileMode = os.ModeSymlink | os.ModeNamedPipe | os.ModeSocket | os.ModeDevice | os.ModeCharDevice | os.ModeIrregular
 
 func InitGit() {

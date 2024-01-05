@@ -17,6 +17,11 @@ func GetAllTagList(ctx context.Context, repoPath string) ([]string, error) {
 	return ret, err
 }
 
+func DeleteTag(ctx context.Context, repoPath string, tag string) error {
+	_, err := command.NewCommand("tag", "-d", tag).Run(ctx, command.WithDir(repoPath))
+	return err
+}
+
 func CheckRefIsTag(ctx context.Context, repoPath string, tag string) bool {
 	if !strings.HasPrefix(tag, TagPrefix) {
 		tag = TagPrefix + tag

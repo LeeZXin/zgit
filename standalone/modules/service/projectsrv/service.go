@@ -2,7 +2,6 @@ package projectsrv
 
 import (
 	"context"
-	"github.com/LeeZXin/zsf-utils/bizerr"
 	"github.com/LeeZXin/zsf-utils/listutil"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/xorm/mysqlstore"
@@ -76,7 +75,7 @@ func DeleteProjectUser(ctx context.Context, reqDTO DeleteProjectUserReqDTO) erro
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	if err := checkProjectUserPerm(ctx, reqDTO.ProjectId, reqDTO.Operator); err != nil {
+	if err := checkPerm(ctx, reqDTO.ProjectId, reqDTO.Operator); err != nil {
 		return err
 	}
 	_, b, err := projectmd.GetProjectUser(ctx, reqDTO.ProjectId, reqDTO.Account)
@@ -101,7 +100,7 @@ func UpsertProjectUser(ctx context.Context, reqDTO UpsertProjectUserReqDTO) erro
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	if err := checkProjectUserPerm(ctx, reqDTO.ProjectId, reqDTO.Operator); err != nil {
+	if err := checkPerm(ctx, reqDTO.ProjectId, reqDTO.Operator); err != nil {
 		return err
 	}
 	// 校验groupId是否正确
@@ -155,7 +154,7 @@ func UpsertProjectUser(ctx context.Context, reqDTO UpsertProjectUserReqDTO) erro
 	return nil
 }
 
-func checkProjectUserPerm(ctx context.Context, projectId string, operator usermd.UserInfo) error {
+func checkPerm(ctx context.Context, projectId string, operator usermd.UserInfo) error {
 	// 判断权限
 	if !operator.IsAdmin {
 		pu, b, err := projectmd.GetProjectUser(ctx, projectId, operator.Account)
@@ -232,7 +231,7 @@ func InsertProjectUserGroup(ctx context.Context, reqDTO InsertProjectUserGroupRe
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
 	// 检查权限
-	if err := checkProjectUserPerm(ctx, reqDTO.ProjectId, reqDTO.Operator); err != nil {
+	if err := checkPerm(ctx, reqDTO.ProjectId, reqDTO.Operator); err != nil {
 		return err
 	}
 	if _, err := projectmd.InsertProjectUserGroup(ctx, projectmd.InsertProjectUserGroupReqDTO{
@@ -259,7 +258,7 @@ func UpdateProjectUserGroupName(ctx context.Context, reqDTO UpdateProjectUserGro
 	}
 	// 管理员项目组无法编辑权限
 	if group.IsAdmin {
-		return bizerr.NewBizErr(apicode.CannotUpdateProjectUserAdminGroupCode.Int(), i18n.GetByKey(i18n.ProjectUserGroupUpdateAdminNotAllow))
+		return util.NewBizErr(apicode.CannotUpdateProjectUserAdminGroupCode, i18n.ProjectUserGroupUpdateAdminNotAllow)
 	}
 	if _, err := projectmd.UpdateProjectUserGroupName(ctx, reqDTO.GroupId, reqDTO.Name); err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
@@ -281,7 +280,7 @@ func UpdateProjectUserGroupPerm(ctx context.Context, reqDTO UpdateProjectUserGro
 	}
 	// 管理员项目组无法编辑权限
 	if group.IsAdmin {
-		return bizerr.NewBizErr(apicode.CannotUpdateProjectUserAdminGroupCode.Int(), i18n.GetByKey(i18n.ProjectUserGroupUpdateAdminNotAllow))
+		return util.NewBizErr(apicode.CannotUpdateProjectUserAdminGroupCode, i18n.ProjectUserGroupUpdateAdminNotAllow)
 	}
 	if _, err = projectmd.UpdateProjectUserGroupPerm(ctx, reqDTO.GroupId, reqDTO.Perm); err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
@@ -308,7 +307,7 @@ func DeleteProjectUserGroup(ctx context.Context, reqDTO DeleteProjectUserGroupRe
 	}
 	// 存在属于该groupId的用户
 	if b {
-		return bizerr.NewBizErr(apicode.ProjectUserGroupHasUserWhenDelCode.Int(), i18n.GetByKey(i18n.ProjectUserGroupHasUserWhenDel))
+		return util.NewBizErr(apicode.ProjectUserGroupHasUserWhenDelCode, i18n.ProjectUserGroupHasUserWhenDel)
 	}
 	if _, err = projectmd.DeleteProjectUserGroup(ctx, reqDTO.GroupId); err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
@@ -323,7 +322,7 @@ func ListProjectUserGroup(ctx context.Context, reqDTO ListProjectUserGroupReqDTO
 	}
 	ctx, closer := mysqlstore.Context(ctx)
 	defer closer.Close()
-	if err := checkProjectUserPerm(ctx, reqDTO.ProjectId, reqDTO.Operator); err != nil {
+	if err := checkPerm(ctx, reqDTO.ProjectId, reqDTO.Operator); err != nil {
 		return nil, err
 	}
 	groups, err := projectmd.ListProjectUserGroup(ctx, reqDTO.ProjectId)

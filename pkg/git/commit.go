@@ -13,6 +13,7 @@ import (
 	"time"
 	"zgit/pkg/git/command"
 	"zgit/pkg/git/signature"
+	"zgit/util"
 )
 
 const (
@@ -400,8 +401,20 @@ func GetCommit(ctx context.Context, repoPath string, refName string) (Commit, st
 	return Commit{}, "", fmt.Errorf("%s unsupported type", refName)
 }
 
-func DetectForcePush(ctx context.Context, repoPath, oldCommitId, newCommitId string) (bool, error) {
-	result, err := command.NewCommand("rev-list", "--max-count=1", oldCommitId, "^"+newCommitId).Run(ctx, command.WithDir(repoPath))
+type DetectForcePushEnv struct {
+	ObjectDirectory              string
+	AlternativeObjectDirectories string
+	QuarantinePath               string
+}
+
+func DetectForcePush(ctx context.Context, repoPath, oldCommitId, newCommitId string, env DetectForcePushEnv) (bool, error) {
+	result, err := command.NewCommand("rev-list", "--max-count=1", oldCommitId, "^"+newCommitId).
+		Run(ctx, command.WithDir(repoPath),
+			command.WithEnv(util.JoinFields(
+				EnvObjectDirectory, env.ObjectDirectory,
+				EnvAlternativeObjectDirectories, env.AlternativeObjectDirectories,
+				EnvQuarantinePath, env.QuarantinePath,
+			)))
 	if err != nil {
 		return false, err
 	}
