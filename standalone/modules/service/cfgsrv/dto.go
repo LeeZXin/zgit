@@ -11,7 +11,7 @@ type UpdateSysCfgReqDTO struct {
 }
 
 func (r *UpdateSysCfgReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -22,7 +22,7 @@ type GetSysCfgReqDTO struct {
 }
 
 func (r *GetSysCfgReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil

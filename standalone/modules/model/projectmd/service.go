@@ -3,9 +3,30 @@ package projectmd
 import (
 	"context"
 	"encoding/json"
+	"github.com/LeeZXin/zsf-utils/idutil"
 	"github.com/LeeZXin/zsf/xorm/xormutil"
 	"zgit/pkg/perm"
 )
+
+func GenProjectId() string {
+	return idutil.RandomUuid()
+}
+
+func GenGroupId() string {
+	return idutil.RandomUuid()
+}
+
+func IsProjectIdValid(projectId string) bool {
+	return len(projectId) == 32
+}
+
+func IsGroupIdValid(groupId string) bool {
+	return len(groupId) == 32
+}
+
+func IsGroupNameValid(groupName string) bool {
+	return len(groupName) > 0 && len(groupName) <= 64
+}
 
 func GetByProjectId(ctx context.Context, projectId string) (Project, bool, error) {
 	var ret Project

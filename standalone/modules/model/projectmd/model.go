@@ -2,7 +2,6 @@ package projectmd
 
 import (
 	"encoding/json"
-	"github.com/LeeZXin/zsf-utils/idutil"
 	"time"
 	"zgit/pkg/perm"
 )
@@ -12,14 +11,6 @@ const (
 	ProjectUserTableName      = "project_user"
 	ProjectUserGroupTableName = "project_user_group"
 )
-
-func GenProjectId() string {
-	return idutil.RandomUuid()
-}
-
-func GenGroupId() string {
-	return idutil.RandomUuid()
-}
 
 type Project struct {
 	Id          int64     `json:"id" xorm:"pk autoincr"`

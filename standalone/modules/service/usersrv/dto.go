@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	validPasswordPattern = regexp.MustCompile("\\S{6,}")
+	validPasswordPattern     = regexp.MustCompile("\\S{6,}")
+	validUserEmailRegPattern = regexp.MustCompile(`^(\w)+(\.\w+)*@(\w)+((\.\w+)+)$`)
 )
 
 type InsertUserReqDTO struct {
@@ -22,7 +23,7 @@ type InsertUserReqDTO struct {
 }
 
 func (r *InsertUserReqDTO) IsValid() error {
-	if !validateUserAccount(r.Account) {
+	if !usermd.IsUserAccountValid(r.Account) {
 		return util.InvalidArgsError()
 	}
 	if !validateUserEmail(r.Email) {
@@ -34,7 +35,7 @@ func (r *InsertUserReqDTO) IsValid() error {
 	if len(r.Name) > 32 || len(r.Name) == 0 {
 		return util.InvalidArgsError()
 	}
-	if !validateOperator(r.Operator) {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -49,7 +50,7 @@ type RegisterUserReqDTO struct {
 }
 
 func (r *RegisterUserReqDTO) IsValid() error {
-	if !validateUserAccount(r.Account) {
+	if !usermd.IsUserAccountValid(r.Account) {
 		return util.InvalidArgsError()
 	}
 	if !validateUserEmail(r.Email) {
@@ -70,7 +71,7 @@ type LoginReqDTO struct {
 }
 
 func (r *LoginReqDTO) IsValid() error {
-	if !validateUserAccount(r.Account) {
+	if !usermd.IsUserAccountValid(r.Account) {
 		return util.InvalidArgsError()
 	}
 	if !validatePassword(r.Password) {
@@ -88,7 +89,7 @@ func (r *LoginOutReqDTO) IsValid() error {
 	if r.SessionId == "" {
 		return util.InvalidArgsError()
 	}
-	if validateOperator(r.Operator) {
+	if util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -100,10 +101,10 @@ type DeleteUserReqDTO struct {
 }
 
 func (r *DeleteUserReqDTO) IsValid() error {
-	if validateUserAccount(r.Account) {
+	if !usermd.IsUserAccountValid(r.Account) {
 		return util.InvalidArgsError()
 	}
-	if !validateOperator(r.Operator) {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -126,7 +127,7 @@ func (r *ListUserReqDTO) IsValid() error {
 	if len(r.Account) > 32 || len(r.Account) == 0 {
 		return util.InvalidArgsError()
 	}
-	if !validateOperator(r.Operator) {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -156,13 +157,13 @@ type UpdateUserReqDTO struct {
 }
 
 func (r *UpdateUserReqDTO) IsValid() error {
-	if !validateUserAccount(r.Account) {
+	if !usermd.IsUserAccountValid(r.Account) {
 		return util.InvalidArgsError()
 	}
 	if !validateUserName(r.Name) {
 		return util.InvalidArgsError()
 	}
-	if !validateOperator(r.Operator) {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	if !validateUserEmail(r.Email) {
@@ -178,10 +179,10 @@ type UpdateAdminReqDTO struct {
 }
 
 func (r *UpdateAdminReqDTO) IsValid() error {
-	if !validateUserAccount(r.Account) {
+	if !usermd.IsUserAccountValid(r.Account) {
 		return util.InvalidArgsError()
 	}
-	if !validateOperator(r.Operator) {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -194,32 +195,24 @@ type UpdatePasswordReqDTO struct {
 }
 
 func (r *UpdatePasswordReqDTO) IsValid() error {
-	if !validateUserAccount(r.Account) {
+	if !usermd.IsUserAccountValid(r.Account) {
 		return util.InvalidArgsError()
 	}
 	if !validatePassword(r.Password) {
 		return util.InvalidArgsError()
 	}
-	if !validateOperator(r.Operator) {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
-}
-
-func validateUserAccount(account string) bool {
-	return util.ValidUserAccountPattern.MatchString(account)
 }
 
 func validateUserName(name string) bool {
 	return len(name) > 0 && len(name) <= 32
 }
 
-func validateOperator(operator usermd.UserInfo) bool {
-	return operator.Account != ""
-}
-
 func validateUserEmail(email string) bool {
-	return util.ValidUserEmailRegPattern.MatchString(email)
+	return validUserEmailRegPattern.MatchString(email)
 }
 
 func validatePassword(password string) bool {

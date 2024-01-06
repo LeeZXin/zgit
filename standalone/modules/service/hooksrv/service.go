@@ -3,6 +3,7 @@ package hooksrv
 import (
 	"context"
 	"github.com/IGLOU-EU/go-wildcard/v2"
+	"github.com/LeeZXin/zsf-utils/listutil"
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/xorm/mysqlstore"
 	"path/filepath"
@@ -48,6 +49,16 @@ func PreReceive(ctx context.Context, opts hook.Opts) error {
 			for _, pb := range pbList {
 				// 通配符匹配 是保护分支
 				if wildcard.Match(pb.Branch, name) {
+					// 只有可推送名单里面才能直接push
+					if opts.PrId == "" && len(pb.Cfg.DirectPushList) > 0 {
+						// prId为空说明不是来自合并请求的push
+						contains, _ := listutil.Contains(pb.Cfg.DirectPushList, func(account string) (bool, error) {
+							return account == opts.PusherId, nil
+						})
+						if !contains {
+							return util.NewBizErr(apicode.ForcePushForbiddenCode, i18n.ProtectedBranchNotAllowDirectPush)
+						}
+					}
 					// 不允许删除保护分支
 					if info.NewCommitId == git.ZeroCommitId {
 						return util.NewBizErr(apicode.ForcePushForbiddenCode, i18n.ProtectedBranchNotAllowDelete)
@@ -70,7 +81,6 @@ func PreReceive(ctx context.Context, opts hook.Opts) error {
 						// 禁止push -f
 						return util.NewBizErr(apicode.ForcePushForbiddenCode, i18n.ProtectedBranchNotAllowForcePush)
 					}
-
 				}
 			}
 		}

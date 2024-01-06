@@ -1,6 +1,7 @@
 package repomd
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -24,12 +25,19 @@ type Repo struct {
 	WikiSize      int64     `json:"wikiSize"`
 	GitSize       int64     `json:"gitSize"`
 	LfsSize       int64     `json:"lfsSize"`
+	Cfg           string    `json:"cfg"`
 	Created       time.Time `json:"created" xorm:"created"`
 	Updated       time.Time `json:"updated" xorm:"updated"`
 }
 
 func (*Repo) TableName() string {
 	return RepoTableName
+}
+
+func (r *Repo) GetCfg() RepoCfg {
+	var ret RepoCfg
+	_ = json.Unmarshal([]byte(r.Cfg), &ret)
+	return ret
 }
 
 func (r *Repo) ToRepoInfo() RepoInfo {
@@ -45,5 +53,20 @@ func (r *Repo) ToRepoInfo() RepoInfo {
 		GitSize:   r.GitSize,
 		LfsSize:   r.LfsSize,
 		WikiSize:  r.WikiSize,
+		Cfg:       r.GetCfg(),
 	}
+}
+
+type RepoCfg struct {
+	// 单个lfs size大小限制
+	SingleLfsFileLimitSize int64 `json:"singleLfsFileLimitSize"`
+	// 整个lfs仓库大小限制
+	MaxLfsLimitSize int64 `json:"maxLfsLimitSize"`
+	// 整个仓库大小限制
+	MaxGitLimitSize int64 `json:"maxGitLimitSize"`
+}
+
+func (c *RepoCfg) ToString() string {
+	m, _ := json.Marshal(c)
+	return string(m)
 }

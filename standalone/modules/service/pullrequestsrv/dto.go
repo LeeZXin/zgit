@@ -2,6 +2,7 @@ package pullrequestsrv
 
 import (
 	"zgit/standalone/modules/model/pullrequestmd"
+	"zgit/standalone/modules/model/repomd"
 	"zgit/standalone/modules/model/usermd"
 	"zgit/util"
 )
@@ -14,16 +15,16 @@ type SubmitPullRequestReqDTO struct {
 }
 
 func (r *SubmitPullRequestReqDTO) IsValid() error {
-	if !validateOperator(r.Operator) {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if !repomd.IsRepoIdValid(r.RepoId) {
 		return util.InvalidArgsError()
 	}
-	if len(r.Target) > 128 || len(r.Target) == 0 {
+	if !util.ValidateRef(r.Target) {
 		return util.InvalidArgsError()
 	}
-	if len(r.Head) > 128 || len(r.Head) == 0 {
+	if !util.ValidateRef(r.Head) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -35,10 +36,10 @@ type ClosePullRequestReqDTO struct {
 }
 
 func (r *ClosePullRequestReqDTO) IsValid() error {
-	if !validateOperator(r.Operator) {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if !validatePrId(r.PrId) {
+	if !pullrequestmd.IsPrIdValid(r.PrId) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -50,10 +51,10 @@ type MergePullRequestReqDTO struct {
 }
 
 func (r *MergePullRequestReqDTO) IsValid() error {
-	if !validateOperator(r.Operator) {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if !validatePrId(r.PrId) {
+	if !pullrequestmd.IsPrIdValid(r.PrId) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -73,19 +74,11 @@ func (r *ReviewPullRequestReqDTO) IsValid() error {
 	if !r.Status.IsValid() {
 		return util.InvalidArgsError()
 	}
-	if !validateOperator(r.Operator) {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if !validatePrId(r.PrId) {
+	if !pullrequestmd.IsPrIdValid(r.PrId) {
 		return util.InvalidArgsError()
 	}
 	return nil
-}
-
-func validateOperator(operator usermd.UserInfo) bool {
-	return operator.Account != ""
-}
-
-func validatePrId(prId string) bool {
-	return len(prId) == 32
 }

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 	"zgit/pkg/git/lfs"
+	"zgit/pkg/i18n"
 	"zgit/setting"
 	"zgit/standalone/modules/model/lfsmd"
 	"zgit/standalone/modules/model/repomd"
@@ -36,7 +37,7 @@ var (
 func InitApi() {
 	// 注册lfs api
 	httpserver.AppendRegisterRouterFunc(func(e *gin.Engine) {
-		infoLfs := e.Group(":corpId/:clusterId/:repoName/info/lfs", packRepoPath)
+		infoLfs := e.Group(":corpId/:repoName/info/lfs", packRepoPath)
 		{
 			infoLfs.POST("/objects/batch", checkMediaType, batch)
 			infoLfs.PUT("/objects/:oid/:size", upload)
@@ -56,15 +57,21 @@ func InitApi() {
 
 // packRepoPath
 func packRepoPath(c *gin.Context) {
+	if !setting.LfsEnabled() {
+		c.JSON(http.StatusBadRequest, ErrVO{
+			Message: i18n.GetByKey(i18n.LfsNotSupported),
+		})
+		c.Abort()
+		return
+	}
 	logger.Logger.Info(c.Request.URL.Path)
 	corpId := c.Param("corpId")
-	clusterId := c.Param("clusterId")
 	repoName := c.Param("repoName")
-	repoPath := filepath.Join(corpId, clusterId, repoName)
+	repoPath := filepath.Join(corpId, repoName)
 	authorization := c.GetHeader("Authorization")
 	if authorization == "" {
-		c.JSON(http.StatusBadRequest, ErrVO{
-			Message: "auth not found",
+		c.JSON(http.StatusUnauthorized, ErrVO{
+			Message: i18n.GetByKey(i18n.SystemUnauthorized),
 		})
 		c.Abort()
 		return
@@ -77,7 +84,7 @@ func packRepoPath(c *gin.Context) {
 	})
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ErrVO{
-			Message: err.Error(),
+			Message: i18n.GetByKey(i18n.SystemUnauthorized),
 		})
 		c.Abort()
 		return
@@ -85,7 +92,7 @@ func packRepoPath(c *gin.Context) {
 	claims, ok := token.Claims.(*lfs.Claims)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, ErrVO{
-			Message: "invalid token",
+			Message: i18n.GetByKey(i18n.SystemUnauthorized),
 		})
 		c.Abort()
 		return
@@ -94,14 +101,14 @@ func packRepoPath(c *gin.Context) {
 	repo, b, err := reposrv.GetInfoByPath(ctx, repoPath)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrVO{
-			Message: "internal error",
+			Message: i18n.GetByKey(i18n.SystemInternalError),
 		})
 		c.Abort()
 		return
 	}
 	if !b {
 		c.JSON(http.StatusUnauthorized, ErrVO{
-			Message: "unknown repo",
+			Message: i18n.GetByKey(i18n.SystemInvalidArgs),
 		})
 		c.Abort()
 		return
@@ -109,21 +116,21 @@ func packRepoPath(c *gin.Context) {
 	userInfo, b, err := usersrv.GetUserInfoByAccount(ctx, claims.Account)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrVO{
-			Message: "internal error",
+			Message: i18n.GetByKey(i18n.SystemInternalError),
 		})
 		c.Abort()
 		return
 	}
 	if !b {
 		c.JSON(http.StatusUnauthorized, ErrVO{
-			Message: "invalid token",
+			Message: i18n.GetByKey(i18n.SystemInvalidArgs),
 		})
 		c.Abort()
 		return
 	}
 	c.Set("operator", userInfo)
 	c.Set("claims", claims)
-	c.Set("authorization", authorization)
+	c.Set("Authorization", authorization)
 	c.Set("repo", repo)
 	c.Next()
 }
@@ -182,7 +189,7 @@ func batch(c *gin.Context) {
 		})
 		return
 	}
-	authorization := c.MustGet("authorization").(string)
+	authorization := c.MustGet("Authorization").(string)
 	header := map[string]string{
 		"Authorization": authorization,
 	}
@@ -253,6 +260,7 @@ func lock(c *gin.Context) {
 	singleLock, err := lfssrv.Lock(ctx, lfssrv.LockReqDTO{
 		Repo:     getRepo(c),
 		Operator: operator,
+		Path:     req.Path,
 	})
 	if err != nil {
 		c.JSON(http.StatusOK, ErrVO{
@@ -352,13 +360,13 @@ func listLockVerify(c *gin.Context) {
 	}
 	voList := listResp.LockList
 	ours, _ := listutil.Filter(voList, func(lock lfsmd.LfsLock) (bool, error) {
-		return lock.OwnerAccount == operator.Account, nil
+		return lock.Owner == operator.Account, nil
 	})
 	oursRet, _ := listutil.Map(ours, func(lock lfsmd.LfsLock) (LockVO, error) {
 		return model2LockVO(lock, operator), nil
 	})
 	theirs, _ := listutil.Filter(voList, func(lock lfsmd.LfsLock) (bool, error) {
-		return lock.OwnerAccount != operator.Account, nil
+		return lock.Owner != operator.Account, nil
 	})
 	theirsRet, _ := listutil.Map(theirs, func(lock lfsmd.LfsLock) (LockVO, error) {
 		return model2LockVO(lock, operator), nil

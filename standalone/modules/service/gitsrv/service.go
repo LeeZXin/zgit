@@ -56,16 +56,16 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 	var lfsVerb string
 	if verb == lfsAuthenticateVerb {
 		if !setting.LfsEnabled() {
-			return errors.New("LFS authentication request over SSH denied, LFS support is disabled")
+			return errors.New(i18n.GetByKey(i18n.LfsNotSupported))
 		}
 		if len(words) > 2 {
 			lfsVerb = words[2]
 		}
 	}
-	logger.Logger.Info("git cmd: ", words)
 	accessMode, b := allowedCommands[verb]
 	if !b {
-		return errors.New("Unsupported git command:" + verb)
+		logger.Logger.Error("unsupported cmd: ", words)
+		return errors.New(i18n.GetByKey(i18n.SshCmdNotSupported))
 	}
 	if verb == lfsAuthenticateVerb {
 		if lfsVerb == "upload" {
@@ -73,7 +73,8 @@ func HandleGitCommand(ctx context.Context, operator usermd.UserInfo, words []str
 		} else if lfsVerb == "download" {
 			accessMode = perm.AccessModeRead
 		} else {
-			return errors.New("Unknown LFS verb:" + lfsVerb)
+			logger.Logger.Info("unsupported cmd: ", words)
+			return errors.New(i18n.GetByKey(i18n.SshCmdNotSupported))
 		}
 	}
 	repo, err := checkAccessMode(ctx, operator, repoPath, accessMode)
@@ -147,10 +148,10 @@ func checkAccessMode(ctx context.Context, user usermd.UserInfo, repoPath string,
 	repo, b, err := repomd.GetByPath(ctx, repoPath)
 	if err != nil {
 		logger.Logger.Error(err)
-		return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemInternalError))
+		return repomd.Repo{}, util.InternalError()
 	}
 	if !b {
-		return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.RepoNotFound))
+		return repomd.Repo{}, util.InvalidArgsError()
 	}
 	// 系统管理员有所有的权限
 	if user.IsAdmin {
@@ -159,23 +160,23 @@ func checkAccessMode(ctx context.Context, user usermd.UserInfo, repoPath string,
 	p, b, err := projectmd.GetProjectUserPermDetail(ctx, repo.ProjectId, user.Account)
 	if err != nil {
 		logger.Logger.Error(err)
-		return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemInternalError))
+		return repomd.Repo{}, util.InternalError()
 	}
 	if !b {
-		return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
+		return repomd.Repo{}, util.UnauthorizedError()
 	}
 	if accessMode == perm.AccessModeWrite {
 		// 检查权限
 		if !p.PermDetail.GetRepoPerm(repo.RepoId).CanPush {
-			return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
+			return repomd.Repo{}, util.UnauthorizedError()
 		}
 	} else if accessMode == perm.AccessModeRead {
 		// 检查权限
 		if !p.PermDetail.GetRepoPerm(repo.RepoId).CanAccess {
-			return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemUnauthorized))
+			return repomd.Repo{}, util.UnauthorizedError()
 		}
 	} else {
-		return repomd.Repo{}, errors.New(i18n.GetByKey(i18n.SystemInvalidArgs))
+		return repomd.Repo{}, util.InvalidArgsError()
 	}
 	return repo, nil
 }

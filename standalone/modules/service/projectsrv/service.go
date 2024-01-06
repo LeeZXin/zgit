@@ -155,41 +155,38 @@ func UpsertProjectUser(ctx context.Context, reqDTO UpsertProjectUserReqDTO) erro
 }
 
 func checkPerm(ctx context.Context, projectId string, operator usermd.UserInfo) error {
+	// 校验projectId是否存在
+	_, b, err := projectmd.GetByProjectId(ctx, projectId)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	if !b {
+		return util.InvalidArgsError()
+	}
 	// 判断权限
-	if !operator.IsAdmin {
-		pu, b, err := projectmd.GetProjectUser(ctx, projectId, operator.Account)
-		if err != nil {
-			logger.Logger.WithContext(ctx).Error(err)
-			return util.InternalError()
-		}
-		// 不存在或不是管理员角色
-		if !b || pu.GroupId == "" {
-			return util.UnauthorizedError()
-		}
-		group, b, err := projectmd.GetByGroupId(ctx, pu.GroupId)
-		if err != nil {
-			logger.Logger.WithContext(ctx).Error(err)
-			return util.InternalError()
-		}
-		// groupId为空 用户组应该存在 不存在就是bug
-		if !b {
-			logger.Logger.WithContext(ctx).Errorf("check project: %s, user: %s found not group: %s", projectId, operator.Account, pu.GroupId)
-			return util.InternalError()
-		}
-		// 不是项目管理员组
-		if !group.IsAdmin {
-			return util.UnauthorizedError()
-		}
-	} else {
-		// 校验projectId是否存在
-		_, b, err := projectmd.GetByProjectId(ctx, projectId)
-		if err != nil {
-			logger.Logger.WithContext(ctx).Error(err)
-			return util.InternalError()
-		}
-		if !b {
-			return util.InvalidArgsError()
-		}
+	pu, b, err := projectmd.GetProjectUser(ctx, projectId, operator.Account)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	// 不存在或不是管理员角色
+	if !b || pu.GroupId == "" {
+		return util.UnauthorizedError()
+	}
+	group, b, err := projectmd.GetByGroupId(ctx, pu.GroupId)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	// groupId为空 用户组应该存在 不存在就是bug
+	if !b {
+		logger.Logger.WithContext(ctx).Errorf("check project: %s, user: %s found not group: %s", projectId, operator.Account, pu.GroupId)
+		return util.InternalError()
+	}
+	// 不是项目管理员组
+	if !group.IsAdmin {
+		return util.UnauthorizedError()
 	}
 	return nil
 }
@@ -204,11 +201,7 @@ func checkProjectUserPermByGroupId(ctx context.Context, operator usermd.UserInfo
 	if !b {
 		return projectmd.ProjectUserGroup{}, util.InvalidArgsError()
 	}
-	// 系统管理员有权限
-	if operator.IsAdmin {
-		return group, nil
-	}
-	// 非系统管理员检查项目管理员权限
+	// 检查项目管理员权限
 	pu, b, err := projectmd.GetProjectUser(ctx, group.ProjectId, operator.Account)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)

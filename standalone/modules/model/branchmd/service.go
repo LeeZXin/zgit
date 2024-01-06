@@ -7,10 +7,23 @@ import (
 	"github.com/LeeZXin/zsf-utils/idutil"
 	"github.com/LeeZXin/zsf-utils/listutil"
 	"github.com/LeeZXin/zsf/xorm/xormutil"
+	"regexp"
+)
+
+var (
+	validBranchPattern = regexp.MustCompile(`^\S{1,32}$`)
 )
 
 func GenBid() string {
 	return idutil.RandomUuid()
+}
+
+func IsBidValid(bid string) bool {
+	return len(bid) == 32
+}
+
+func IsWildcardBranchValid(branch string) bool {
+	return validBranchPattern.MatchString(branch)
 }
 
 func InsertProtectedBranch(ctx context.Context, reqDTO InsertProtectedBranchReqDTO) error {

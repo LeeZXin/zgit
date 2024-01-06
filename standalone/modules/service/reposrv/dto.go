@@ -2,9 +2,11 @@ package reposrv
 
 import (
 	"github.com/LeeZXin/zsf-utils/collections/hashset"
+	"regexp"
 	"strings"
 	"time"
 	"zgit/pkg/git"
+	"zgit/standalone/modules/model/projectmd"
 	"zgit/standalone/modules/model/repomd"
 	"zgit/standalone/modules/model/usermd"
 	"zgit/util"
@@ -13,6 +15,11 @@ import (
 const (
 	UpDirection   = "up"
 	DownDirection = "down"
+)
+
+var (
+	validRepoNamePattern = regexp.MustCompile("^[\\w\\-]{1,32}$")
+	validBranchPattern   = regexp.MustCompile("^\\w{1,32}$")
 )
 
 type InitRepoReqDTO struct {
@@ -27,19 +34,19 @@ type InitRepoReqDTO struct {
 }
 
 func (r *InitRepoReqDTO) IsValid() error {
-	if len(r.ProjectId) == 0 || len(r.ProjectId) > 32 {
+	if !projectmd.IsProjectIdValid(r.ProjectId) {
 		return util.InvalidArgsError()
 	}
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if !util.ValidRepoNamePattern.MatchString(r.Name) {
+	if !validRepoNamePattern.MatchString(r.Name) {
 		return util.InvalidArgsError()
 	}
 	if len(r.Desc) > 255 {
 		return util.InvalidArgsError()
 	}
-	if r.DefaultBranch != "" && !util.ValidBranchPattern.MatchString(r.DefaultBranch) {
+	if r.DefaultBranch != "" && !validBranchPattern.MatchString(r.DefaultBranch) {
 		return util.InvalidArgsError()
 	}
 	if !r.RepoType.IsValid() {
@@ -57,10 +64,10 @@ type DeleteRepoReqDTO struct {
 }
 
 func (r *DeleteRepoReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if !repomd.IsRepoIdValid(r.RepoId) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -74,10 +81,10 @@ type TreeRepoReqDTO struct {
 }
 
 func (r *TreeRepoReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if !repomd.IsRepoIdValid(r.RepoId) {
 		return util.InvalidArgsError()
 	}
 	if len(r.RefName) > 128 || len(r.RefName) == 0 {
@@ -98,10 +105,10 @@ type CatFileReqDTO struct {
 }
 
 func (r *CatFileReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if !repomd.IsRepoIdValid(r.RepoId) {
 		return util.InvalidArgsError()
 	}
 	if len(r.RefName) > 128 || len(r.RefName) == 0 {
@@ -110,7 +117,7 @@ func (r *CatFileReqDTO) IsValid() error {
 	if len(r.Dir) > 128 || len(r.Dir) == 0 {
 		return util.InvalidArgsError()
 	}
-	if len(r.FileName) > 255 || len(r.FileName) == 0 {
+	if !validateFileName(r.FileName) {
 		return util.InvalidArgsError()
 	}
 	if strings.HasSuffix(r.Dir, "/") {
@@ -128,10 +135,10 @@ type EntriesRepoReqDTO struct {
 }
 
 func (r *EntriesRepoReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if !repomd.IsRepoIdValid(r.RepoId) {
 		return util.InvalidArgsError()
 	}
 	if r.RefName == "" {
@@ -152,7 +159,7 @@ type ListRepoReqDTO struct {
 }
 
 func (r *ListRepoReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	if len(r.ProjectId) == 0 || len(r.ProjectId) > 128 {
@@ -204,10 +211,10 @@ type AllBranchesReqDTO struct {
 }
 
 func (r *AllBranchesReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if !repomd.IsRepoIdValid(r.RepoId) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -219,10 +226,10 @@ type AllTagsReqDTO struct {
 }
 
 func (r *AllTagsReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if !repomd.IsRepoIdValid(r.RepoId) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -234,10 +241,10 @@ type GcReqDTO struct {
 }
 
 func (r *GcReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if !repomd.IsRepoIdValid(r.RepoId) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -279,16 +286,16 @@ type DiffCommitsReqDTO struct {
 }
 
 func (r *DiffCommitsReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if !repomd.IsRepoIdValid(r.RepoId) {
 		return util.InvalidArgsError()
 	}
-	if len(r.Target) > 128 || len(r.Target) == 0 {
+	if !util.ValidateRef(r.Target) {
 		return util.InvalidArgsError()
 	}
-	if len(r.Head) > 128 || len(r.Head) == 0 {
+	if !util.ValidateRef(r.Head) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -354,13 +361,13 @@ type ShowDiffTextContentReqDTO struct {
 }
 
 func (r *ShowDiffTextContentReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if !repomd.IsRepoIdValid(r.RepoId) {
 		return util.InvalidArgsError()
 	}
-	if len(r.CommitId) == 0 || len(r.CommitId) > 128 {
+	if !util.ValidateCommitId(r.CommitId) {
 		return util.InvalidArgsError()
 	}
 	if r.Offset < 0 {
@@ -372,7 +379,7 @@ func (r *ShowDiffTextContentReqDTO) IsValid() error {
 	if r.Direction != UpDirection && r.Direction != DownDirection {
 		return util.InvalidArgsError()
 	}
-	if len(r.FileName) > 255 || len(r.FileName) == 0 {
+	if !validateFileName(r.FileName) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -387,20 +394,24 @@ type DiffFileReqDTO struct {
 }
 
 func (r *DiffFileReqDTO) IsValid() error {
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
-	if len(r.RepoId) > 32 || len(r.RepoId) == 0 {
+	if !repomd.IsRepoIdValid(r.RepoId) {
 		return util.InvalidArgsError()
 	}
-	if len(r.Target) > 128 || len(r.Target) == 0 {
+	if !util.ValidateRef(r.Target) {
 		return util.InvalidArgsError()
 	}
-	if len(r.Head) > 128 || len(r.Head) == 0 {
+	if !util.ValidateRef(r.Head) {
 		return util.InvalidArgsError()
 	}
-	if len(r.FileName) > 255 || len(r.FileName) == 0 {
+	if !validateFileName(r.FileName) {
 		return util.InvalidArgsError()
 	}
 	return nil
+}
+
+func validateFileName(name string) bool {
+	return len(name) <= 255 && len(name) > 0
 }

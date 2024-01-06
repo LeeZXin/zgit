@@ -13,11 +13,13 @@ import (
 )
 
 const (
-	LoginUser = "loginUser"
+	LoginUser           = "loginUser"
+	LoginCookie         = "zgit-auth"
+	AuthorizationHeader = "Authorization"
 )
 
 func CheckLogin(c *gin.Context) {
-	sessionId := c.GetHeader("Authorization")
+	sessionId := GetSessionId(c)
 	if sessionId == "" {
 		c.JSON(http.StatusUnauthorized, ginutil.BaseResp{
 			Code:    apicode.NotLoginCode.Int(),
@@ -69,5 +71,9 @@ func MustGetLoginUser(c *gin.Context) usermd.UserInfo {
 }
 
 func GetSessionId(c *gin.Context) string {
-	return c.GetHeader("Authorization")
+	cookie, _ := c.Cookie(LoginCookie)
+	if cookie == "" {
+		return c.GetHeader(AuthorizationHeader)
+	}
+	return cookie
 }

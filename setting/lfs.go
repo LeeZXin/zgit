@@ -15,8 +15,6 @@ var (
 	jwtAuthExpiry time.Duration
 
 	jwtSecretBytes = make([]byte, 32)
-
-	maxLfsFileSize int64 = 100 * 1024 * 1024
 )
 
 func init() {
@@ -64,8 +62,4 @@ func newJwtSecret() ([]byte, error) {
 		return nil, err
 	}
 	return bytes, nil
-}
-
-func MaxLfsFileSize() int64 {
-	return maxLfsFileSize
 }

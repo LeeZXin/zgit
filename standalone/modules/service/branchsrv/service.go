@@ -126,10 +126,6 @@ func checkPerm(ctx context.Context, repoId string, operator usermd.UserInfo) (re
 	if !b {
 		return repomd.Repo{}, util.InvalidArgsError()
 	}
-	// 如果是系统管理员有所有权限
-	if operator.IsAdmin {
-		return repo, nil
-	}
 	// 如果不是 检查用户组权限
 	permDetail, b, err := projectmd.GetProjectUserPermDetail(ctx, repo.ProjectId, operator.Account)
 	if err != nil {

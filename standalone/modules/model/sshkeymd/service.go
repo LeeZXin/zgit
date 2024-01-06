@@ -10,6 +10,10 @@ func GenKeyId() string {
 	return idutil.RandomUuid()
 }
 
+func IsKeyIdValid(keyId string) bool {
+	return len(keyId) == 32
+}
+
 func SearchByKeyContent(ctx context.Context, content string) (SshKey, bool, error) {
 	var ret SshKey
 	b, err := xormutil.MustGetXormSession(ctx).

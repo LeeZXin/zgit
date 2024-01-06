@@ -618,16 +618,13 @@ func getPerm(ctx context.Context, repoId string, operator usermd.UserInfo) (repo
 	if !b {
 		return repomd.Repo{}, perm.Detail{}, util.InvalidArgsError()
 	}
-	if operator.IsAdmin {
-		return repo, perm.DefaultPermDetail, nil
-	}
 	p, b, err := projectmd.GetProjectUserPermDetail(ctx, repo.ProjectId, operator.Account)
 	if err != nil {
 		logger.Logger.WithContext(ctx).Error(err)
-		return repomd.Repo{}, perm.Detail{}, util.InternalError()
+		return repo, perm.Detail{}, util.InternalError()
 	}
 	if !b {
-		return repomd.Repo{}, perm.Detail{}, util.UnauthorizedError()
+		return repo, perm.Detail{}, util.UnauthorizedError()
 	}
 	return repo, p.PermDetail, nil
 }

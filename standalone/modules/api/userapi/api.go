@@ -52,6 +52,7 @@ func login(c *gin.Context) {
 			util.HandleApiErr(err, c)
 			return
 		}
+		c.SetCookie(apicommon.LoginCookie, sessionId, int(usersrv.LoginSessionExpiry.Seconds()), "/", "", false, true)
 		c.JSON(http.StatusOK, LoginRespVO{
 			BaseResp:  ginutil.DefaultSuccessResp,
 			SessionId: sessionId,

@@ -114,6 +114,16 @@ const (
 	ProtectedBranchInvalidReviewCountWhenCreatePr Key = "protectedBranch.invalidReviewCountWhenCreatePr"
 	ProtectedBranchNotAllowForcePush              Key = "protectedBranch.notAllowForcePush"
 	ProtectedBranchNotAllowDelete                 Key = "protectedBranch.notAllowDelete"
+	ProtectedBranchNotAllowDirectPush             Key = "protectedBranch.notAllowDirectPush"
+)
+
+const (
+	LfsNotSupported              Key = "lfs.notSupported"
+	LfsExceedSingleFileLimitSize Key = "lfs.exceedSingleFileLimitSize"
+)
+
+const (
+	SshCmdNotSupported Key = "ssh.notSupportedCmd"
 )
 
 var (
@@ -196,14 +206,21 @@ var (
 
 		UserAccountUnauthorizedReviewCodeWarnFormat: "该用户%s无评审代码的权限",
 
-		ProtectedBranchNotAllowForcePush: "保护分支禁止强制push",
-		ProtectedBranchNotAllowDelete:    "保护分支禁止删除",
+		ProtectedBranchNotAllowForcePush:  "保护分支禁止强制push",
+		ProtectedBranchNotAllowDelete:     "保护分支禁止删除",
+		ProtectedBranchNotAllowDirectPush: "保护分支不可直接push",
 
 		PullRequestAgreeMergeStatus:    "同意合并",
 		PullRequestDisagreeMergeStatus: "不同意合并",
 		PullRequestUnknownReviewStatus: "未知状态",
 
 		PullRequestReviewerCountLowerThanCfg: "代码评审数量小于配置数量",
+
+		LfsNotSupported: "不支持lfs",
+
+		LfsExceedSingleFileLimitSize: "%s 文件大小：%s, 超过配置大小: %s",
+
+		SshCmdNotSupported: "不支持该命令",
 	}
 )
 

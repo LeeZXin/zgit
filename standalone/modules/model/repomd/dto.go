@@ -3,17 +3,18 @@ package repomd
 import "zgit/pkg/i18n"
 
 type InsertRepoReqDTO struct {
-	Name          string   `json:"name"`
-	Path          string   `json:"path"`
-	Author        string   `json:"author"`
-	ProjectId     string   `json:"projectId"`
-	RepoDesc      string   `json:"repoDesc"`
-	DefaultBranch string   `json:"defaultBranch"`
-	RepoType      RepoType `json:"repoType"`
-	IsEmpty       bool     `json:"isEmpty"`
-	TotalSize     int64    `json:"totalSize"`
-	GitSize       int64    `json:"gitSize"`
-	LfsSize       int64    `json:"lfsSize"`
+	Name          string
+	Path          string
+	Author        string
+	ProjectId     string
+	RepoDesc      string
+	DefaultBranch string
+	RepoType      RepoType
+	IsEmpty       bool
+	TotalSize     int64
+	GitSize       int64
+	LfsSize       int64
+	Cfg           RepoCfg
 }
 
 type RepoType int
@@ -50,17 +51,18 @@ func (t RepoType) IsValid() bool {
 }
 
 type RepoInfo struct {
-	RepoId    string `json:"repoId"`
-	Name      string `json:"name"`
-	Path      string `json:"path"`
-	Author    string `json:"author"`
-	ProjectId string `json:"projectId"`
-	RepoType  int    `json:"repoType"`
-	IsEmpty   bool   `json:"isEmpty"`
-	TotalSize int64  `json:"totalSize"`
-	WikiSize  int64  `json:"wikiSize"`
-	GitSize   int64  `json:"gitSize"`
-	LfsSize   int64  `json:"lfsSize"`
+	RepoId    string  `json:"repoId"`
+	Name      string  `json:"name"`
+	Path      string  `json:"path"`
+	Author    string  `json:"author"`
+	ProjectId string  `json:"projectId"`
+	RepoType  int     `json:"repoType"`
+	IsEmpty   bool    `json:"isEmpty"`
+	TotalSize int64   `json:"totalSize"`
+	WikiSize  int64   `json:"wikiSize"`
+	GitSize   int64   `json:"gitSize"`
+	LfsSize   int64   `json:"lfsSize"`
+	Cfg       RepoCfg `json:"cfg"`
 }
 
 type RepoStatus int

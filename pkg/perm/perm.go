@@ -1,5 +1,10 @@
 package perm
 
+import (
+	"zgit/standalone/modules/model/repomd"
+	"zgit/util"
+)
+
 var (
 	DefaultProjectPerm = ProjectPerm{
 		CanInitRepo:   true,
@@ -31,6 +36,15 @@ type Detail struct {
 	RepoPermList []RepoPermWithId `json:"repoPermList,omitempty"`
 }
 
+func (d *Detail) IsValid() error {
+	for _, p := range d.RepoPermList {
+		if err := p.IsValid(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (d *Detail) GetRepoPerm(repoId string) RepoPerm {
 	if d.ApplyDefaultRepoPerm {
 		return d.DefaultRepoPerm
@@ -46,6 +60,13 @@ func (d *Detail) GetRepoPerm(repoId string) RepoPerm {
 type RepoPermWithId struct {
 	RepoId string `json:"repoId"`
 	RepoPerm
+}
+
+func (r *RepoPermWithId) IsValid() error {
+	if !repomd.IsRepoIdValid(r.RepoId) {
+		return util.InvalidArgsError()
+	}
+	return nil
 }
 
 type RepoPerm struct {

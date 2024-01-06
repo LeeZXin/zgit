@@ -44,8 +44,9 @@ func (i *DiffCommitsInfo) IsMergeAble() bool {
 }
 
 type MergeRepoOpts struct {
-	PrId    string
-	Message string
+	PrId     string
+	PusherId string
+	Message  string
 }
 
 func GetDiffCommitsInfo(ctx context.Context, repoPath, target, head string) (DiffCommitsInfo, error) {
@@ -156,6 +157,7 @@ func doMerge(ctx context.Context, repoPath string, pr DiffCommitsInfo, opts Merg
 					EnvAppUrl, setting.AppUrl(),
 					EnvHookToken, setting.HookToken(),
 					EnvPrId, opts.PrId,
+					EnvPusherId, opts.PusherId,
 				),
 			),
 		); err != nil {

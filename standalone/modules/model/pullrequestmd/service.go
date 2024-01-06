@@ -14,6 +14,14 @@ func GenRid() string {
 	return idutil.RandomUuid()
 }
 
+func IsPrIdValid(prId string) bool {
+	return len(prId) == 32
+}
+
+func IsRidValid(rid string) bool {
+	return len(rid) == 32
+}
+
 func InsertPullRequest(ctx context.Context, reqDTO InsertPullRequestReqDTO) (PullRequest, error) {
 	ret := PullRequest{
 		PrId:     GenPrId(),

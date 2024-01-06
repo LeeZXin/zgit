@@ -5,6 +5,7 @@ import (
 	"github.com/LeeZXin/zsf/logger"
 	"github.com/LeeZXin/zsf/starter"
 	"github.com/urfave/cli/v2"
+	"regexp"
 	"zgit/pkg/git"
 	"zgit/setting"
 	"zgit/standalone/modules/api/branchapi"
@@ -18,7 +19,6 @@ import (
 	"zgit/standalone/modules/api/userapi"
 	"zgit/standalone/modules/service/cfgsrv"
 	"zgit/standalone/sshserv"
-	"zgit/util"
 )
 
 var Standalone = &cli.Command{
@@ -28,9 +28,13 @@ var Standalone = &cli.Command{
 	Action:      runStandalone,
 }
 
+var (
+	validCorpIdPattern = regexp.MustCompile("^\\w{1,32}$")
+)
+
 func runStandalone(*cli.Context) error {
 	// 检查corpId配置
-	if !util.ValidCorpIdPattern.MatchString(setting.StandaloneCorpId()) {
+	if !validCorpIdPattern.MatchString(setting.StandaloneCorpId()) {
 		return errors.New("invalid standalone corpId config")
 	}
 	logger.Logger.Info("zgit works on standalone mode")

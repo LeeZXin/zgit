@@ -28,6 +28,8 @@ type ProtectedBranchCfg struct {
 	ReviewCountWhenCreatePr int `json:"ReviewCountWhenCreatePr"`
 	// 代码评审员名单
 	ReviewerList []string `json:"reviewerList"`
+	// 可直接推送名单
+	DirectPushList []string `json:"directPushList"`
 }
 
 func (c *ProtectedBranchCfg) ToString() string {

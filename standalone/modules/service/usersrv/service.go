@@ -123,7 +123,7 @@ func InsertUser(ctx context.Context, reqDTO InsertUserReqDTO) error {
 	defer closer.Close()
 	_, b, err := usermd.GetByAccount(ctx, reqDTO.Account)
 	if b {
-		return util.NewBizErr(apicode.UserAlreadyExistsCode, i18n.UserAlreadyExists)
+		return util.NewBizErr(apicode.InvalidArgsCode, i18n.UserAlreadyExists)
 	}
 	_, err = usermd.InsertUser(ctx, usermd.InsertUserReqDTO{
 		Name:      reqDTO.Name,

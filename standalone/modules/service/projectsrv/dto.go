@@ -2,6 +2,7 @@ package projectsrv
 
 import (
 	"zgit/pkg/perm"
+	"zgit/standalone/modules/model/projectmd"
 	"zgit/standalone/modules/model/usermd"
 	"zgit/util"
 )
@@ -19,10 +20,15 @@ func (r *InsertProjectReqDTO) IsValid() error {
 	if len(r.Desc) > 128 {
 		return util.InvalidArgsError()
 	}
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
+}
+
+type DeleteProjectReqDTO struct {
+	ProjectId string
+	Operator  usermd.UserInfo
 }
 
 type DeleteProjectUserReqDTO struct {
@@ -32,13 +38,13 @@ type DeleteProjectUserReqDTO struct {
 }
 
 func (r *DeleteProjectUserReqDTO) IsValid() error {
-	if len(r.ProjectId) == 0 || len(r.ProjectId) > 32 {
+	if !projectmd.IsProjectIdValid(r.ProjectId) {
 		return util.InvalidArgsError()
 	}
-	if len(r.Account) > 32 || len(r.Account) == 0 {
+	if !usermd.IsUserAccountValid(r.Account) {
 		return util.InvalidArgsError()
 	}
-	if r.Operator.Account == "" {
+	if util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -52,16 +58,16 @@ type UpsertProjectUserReqDTO struct {
 }
 
 func (r *UpsertProjectUserReqDTO) IsValid() error {
-	if len(r.GroupId) > 32 {
+	if !projectmd.IsGroupIdValid(r.GroupId) {
 		return util.InvalidArgsError()
 	}
-	if len(r.ProjectId) == 0 || len(r.ProjectId) > 32 {
+	if !projectmd.IsProjectIdValid(r.ProjectId) {
 		return util.InvalidArgsError()
 	}
-	if len(r.Account) > 32 || len(r.Account) == 0 {
+	if !usermd.IsUserAccountValid(r.Account) {
 		return util.InvalidArgsError()
 	}
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -75,13 +81,13 @@ type InsertProjectUserGroupReqDTO struct {
 }
 
 func (r *InsertProjectUserGroupReqDTO) IsValid() error {
-	if len(r.Name) > 64 {
+	if !projectmd.IsGroupNameValid(r.Name) {
 		return util.InvalidArgsError()
 	}
-	if len(r.ProjectId) == 0 || len(r.ProjectId) > 32 {
+	if !projectmd.IsProjectIdValid(r.ProjectId) {
 		return util.InvalidArgsError()
 	}
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -94,13 +100,13 @@ type UpdateProjectUserGroupNameReqDTO struct {
 }
 
 func (r *UpdateProjectUserGroupNameReqDTO) IsValid() error {
-	if len(r.Name) == 0 || len(r.Name) > 64 {
+	if !projectmd.IsGroupNameValid(r.Name) {
 		return util.InvalidArgsError()
 	}
-	if len(r.GroupId) == 0 || len(r.GroupId) > 32 {
+	if !projectmd.IsGroupIdValid(r.GroupId) {
 		return util.InvalidArgsError()
 	}
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -113,10 +119,10 @@ type UpdateProjectUserGroupPermReqDTO struct {
 }
 
 func (r *UpdateProjectUserGroupPermReqDTO) IsValid() error {
-	if len(r.GroupId) == 0 || len(r.GroupId) > 32 {
+	if !projectmd.IsGroupIdValid(r.GroupId) {
 		return util.InvalidArgsError()
 	}
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -128,10 +134,10 @@ type DeleteProjectUserGroupReqDTO struct {
 }
 
 func (r *DeleteProjectUserGroupReqDTO) IsValid() error {
-	if len(r.GroupId) == 0 || len(r.GroupId) > 32 {
+	if !projectmd.IsGroupIdValid(r.GroupId) {
 		return util.InvalidArgsError()
 	}
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil
@@ -143,10 +149,10 @@ type ListProjectUserGroupReqDTO struct {
 }
 
 func (r *ListProjectUserGroupReqDTO) IsValid() error {
-	if len(r.ProjectId) == 0 || len(r.ProjectId) > 32 {
+	if !projectmd.IsProjectIdValid(r.ProjectId) {
 		return util.InvalidArgsError()
 	}
-	if r.Operator.Account == "" {
+	if !util.ValidateOperator(r.Operator) {
 		return util.InvalidArgsError()
 	}
 	return nil

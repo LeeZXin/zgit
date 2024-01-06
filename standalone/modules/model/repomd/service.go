@@ -10,6 +10,10 @@ func GenRepoId() string {
 	return idutil.RandomUuid()
 }
 
+func IsRepoIdValid(repoId string) bool {
+	return len(repoId) == 32
+}
+
 func GetByPath(ctx context.Context, path string) (Repo, bool, error) {
 	var ret Repo
 	b, err := xormutil.MustGetXormSession(ctx).Where("path = ?", path).Get(&ret)
@@ -71,6 +75,7 @@ func InsertRepo(ctx context.Context, reqDTO InsertRepoReqDTO) (Repo, error) {
 		TotalSize:     reqDTO.TotalSize,
 		GitSize:       reqDTO.GitSize,
 		LfsSize:       reqDTO.LfsSize,
+		Cfg:           reqDTO.Cfg.ToString(),
 	}
 	_, err := xormutil.MustGetXormSession(ctx).Insert(&r)
 	return r, err

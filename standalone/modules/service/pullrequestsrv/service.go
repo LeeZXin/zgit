@@ -143,8 +143,9 @@ func MergePullRequest(ctx context.Context, reqDTO MergePullRequestReqDTO) error 
 		}
 		if b {
 			err = git.Merge(ctx, absPath, pr.Target, pr.Head, info, git.MergeRepoOpts{
-				PrId:    pr.PrId,
-				Message: fmt.Sprintf(i18n.GetByKey(i18n.PullRequestMergeMessage), pr.PrId, pr.CreateBy, reqDTO.Operator.Account),
+				PrId:     pr.PrId,
+				PusherId: reqDTO.Operator.Account,
+				Message:  fmt.Sprintf(i18n.GetByKey(i18n.PullRequestMergeMessage), pr.PrId, pr.CreateBy, reqDTO.Operator.Account),
 			})
 			if err != nil {
 				logger.Logger.WithContext(ctx).Error(err)
@@ -185,19 +186,16 @@ func ReviewPullRequest(ctx context.Context, reqDTO ReviewPullRequestReqDTO) erro
 	if !b {
 		return util.InvalidArgsError()
 	}
-	// 系统管理员有所有权限
-	if !reqDTO.Operator.IsAdmin {
-		p, b, err := projectmd.GetProjectUserPermDetail(ctx, repo.ProjectId, reqDTO.Operator.Account)
-		if err != nil {
-			logger.Logger.WithContext(ctx).Error(err)
-			return util.InternalError()
-		}
-		if !b {
-			return util.InvalidArgsError()
-		}
-		if !p.PermDetail.GetRepoPerm(pr.RepoId).CanAccess {
-			return util.UnauthorizedError()
-		}
+	p, b, err := projectmd.GetProjectUserPermDetail(ctx, repo.ProjectId, reqDTO.Operator.Account)
+	if err != nil {
+		logger.Logger.WithContext(ctx).Error(err)
+		return util.InternalError()
+	}
+	if !b {
+		return util.InvalidArgsError()
+	}
+	if !p.PermDetail.GetRepoPerm(pr.RepoId).CanAccess {
+		return util.UnauthorizedError()
 	}
 	// 检查是否是保护分支
 	cfg, isProtectedBranch, err := branchmd.IsProtectedBranch(ctx, repo.RepoId, pr.Head)
@@ -206,7 +204,7 @@ func ReviewPullRequest(ctx context.Context, reqDTO ReviewPullRequestReqDTO) erro
 		return util.InternalError()
 	}
 	if isProtectedBranch {
-		// 看看是否在评审名单里面
+		// 看看是否在评审名单里面 如果设置了评审名单
 		if len(cfg.ReviewerList) > 0 {
 			contains, _ := listutil.Contains(cfg.ReviewerList, func(account string) (bool, error) {
 				return account == reqDTO.Operator.Account, nil
@@ -252,10 +250,6 @@ func checkPermByRepoId(ctx context.Context, repoId string, operator usermd.UserI
 	}
 	if !b {
 		return repomd.Repo{}, util.InvalidArgsError()
-	}
-	// 如果是系统管理员有所有权限
-	if operator.IsAdmin {
-		return repo, nil
 	}
 	p, b, err := projectmd.GetProjectUserPermDetail(ctx, repo.ProjectId, operator.Account)
 	if err != nil {

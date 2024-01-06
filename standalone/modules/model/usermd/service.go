@@ -3,7 +3,16 @@ package usermd
 import (
 	"context"
 	"github.com/LeeZXin/zsf/xorm/xormutil"
+	"regexp"
 )
+
+var (
+	validUserAccountPattern = regexp.MustCompile("^\\w{4,32}$")
+)
+
+func IsUserAccountValid(account string) bool {
+	return validUserAccountPattern.MatchString(account)
+}
 
 func InsertUser(ctx context.Context, reqDTO InsertUserReqDTO) (User, error) {
 	u := User{
